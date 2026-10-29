@@ -14,7 +14,7 @@ Because Droidbubble is free and open source, there are no ads, no trackers, and 
 - **Dual Island Split**: When two activities happen at once (such as music playing while recording your screen or downloading a file), the island splits into two separate bubbles so you can monitor both simultaneously.
 - **Zero-Width Idle State**: When no activities are active, the island smoothly collapses into the center cutout to stay completely invisible and non-intrusive.
 - **Customisable Dimensions**: Adjust width, height, corner radius, and screen alignment offsets to line up with any camera cutout or notch layout.
-- **Tweak-able animations**: Play around with the speed, bounce and snap of the droidbubble’s individual animations to fit your liking.
+- **Tweak-able animations**: Play around with the speed, bounce and snap of the Droidbubble’s individual animations to fit your liking.
 
 Requirements:
 - Android 13+
