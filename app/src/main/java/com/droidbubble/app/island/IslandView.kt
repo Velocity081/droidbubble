@@ -878,9 +878,9 @@ fun IslandOverlayRoot(
     val ringerIslandWidth = (settings.widthDp * 0.95f).dp.coerceAtLeast(130.dp) + (teardropEarRadius * 2f)
 
     val bubbleSize = settings.heightDp.dp
-    val compactMainFull = (settings.widthDp * 0.90f).dp.coerceAtLeast(124.dp)
+    val dualMainShiftLeft = if (!settings.isLeftCutout) 14.dp else 0.dp
+    val compactMainFull = (settings.widthDp * 0.76f).dp.coerceIn(132.dp, 156.dp)
     val compactMainHalf = compactMainFull / 2f
-    val dualMainShiftLeft = 0.dp
 
     // Minimised Island Pill: sits docked at settings.topOffsetDp.dp (or flush at 0.dp in Tear-drop mode).
     // When expanding, it animates from its compact width down to 0.dp.
@@ -3328,7 +3328,7 @@ fun CompactContent(
                 Text(
                     text = String.format(Locale.US, "%02d:%02d", minutes, seconds),
                     color = Color(0xFF30D158),
-                    fontSize = 11.sp,
+                    fontSize = if (isCompactDual) 10.5.sp else 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     softWrap = false
@@ -3341,7 +3341,7 @@ fun CompactContent(
                 Text(
                     text = String.format(Locale.US, "%02d:%02d", minutes, seconds),
                     color = Color(0xFFE5E5EA),
-                    fontSize = 11.sp,
+                    fontSize = if (isCompactDual) 10.5.sp else 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     softWrap = false
@@ -3445,14 +3445,16 @@ fun CompactContent(
             trailingElement()
         }
     } else {
-        val leftWeight = 1f
+        val leftWeight = if (isCompactDual) 1.75f else 1f
         val rightWeight = 1f
+        val startPadding = 8.dp + teardropEarInset
+        val endPadding = if (isCompactDual) 6.dp + teardropEarInset else 8.dp + teardropEarInset
         Row(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
-                    start = 8.dp + teardropEarInset,
-                    end = 8.dp + teardropEarInset,
+                    start = startPadding,
+                    end = endPadding,
                     top = if (isTeardropCutout) 2.dp else 0.dp
                 ),
             verticalAlignment = Alignment.CenterVertically,
