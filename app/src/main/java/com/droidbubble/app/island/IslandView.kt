@@ -878,8 +878,12 @@ fun IslandOverlayRoot(
     val ringerIslandWidth = (settings.widthDp * 0.95f).dp.coerceAtLeast(130.dp) + (teardropEarRadius * 2f)
 
     val bubbleSize = settings.heightDp.dp
-    val dualMainShiftLeft = if (!settings.isLeftCutout) 14.dp else 0.dp
-    val compactMainFull = (settings.widthDp * 0.76f).dp.coerceIn(132.dp, 156.dp)
+    val dualMainShiftLeft = if (!settings.isLeftCutout) 2.dp else 0.dp
+    val compactMainFull = if (settings.isLeftCutout) {
+        (settings.widthDp * 0.76f).dp.coerceIn(132.dp, 156.dp)
+    } else {
+        112.dp
+    }
     val compactMainHalf = compactMainFull / 2f
 
     // Minimised Island Pill: sits docked at settings.topOffsetDp.dp (or flush at 0.dp in Tear-drop mode).
@@ -3193,7 +3197,7 @@ fun CompactContent(
 
             IslandPriority.FLASHLIGHT -> {
                 Box(
-                    modifier = if (isLeftCutout) Modifier else Modifier.offset(x = (-4).dp),
+                    modifier = if (isLeftCutout || isCompactDual) Modifier else Modifier.offset(x = (-4).dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Box(
@@ -3264,7 +3268,7 @@ fun CompactContent(
                         bitmap = displayArt,
                         isPlaying = media?.isPlaying == true,
                         size = 24.dp,
-                        modifier = if (isLeftCutout) Modifier else Modifier.offset(x = (-4).dp)
+                        modifier = if (isLeftCutout || isCompactDual) Modifier else Modifier.offset(x = (-4).dp)
                     )
                 } else if (displayArt != null) {
                     Image(
@@ -3445,10 +3449,10 @@ fun CompactContent(
             trailingElement()
         }
     } else {
-        val leftWeight = if (isCompactDual) 1.75f else 1f
+        val leftWeight = if (isCompactDual) 1.08f else 1f
         val rightWeight = 1f
-        val startPadding = 8.dp + teardropEarInset
-        val endPadding = if (isCompactDual) 6.dp + teardropEarInset else 8.dp + teardropEarInset
+        val startPadding = (if (isCompactDual) 7.dp else 8.dp) + teardropEarInset
+        val endPadding = (if (isCompactDual) 6.dp else 8.dp) + teardropEarInset
         Row(
             modifier = Modifier
                 .fillMaxSize()
