@@ -873,16 +873,16 @@ fun IslandOverlayRoot(
     )
 
     val teardropEarRadius = if (settings.isTeardropCutout) 11.dp else 0.dp
-    val chargingIslandWidth = (settings.widthDp + 20).dp.coerceAtLeast(140.dp) + (teardropEarRadius * 2f)
-    val unlockIslandWidth = (settings.widthDp * 0.82f).dp.coerceAtLeast(108.dp) + (teardropEarRadius * 2f)
-    val ringerIslandWidth = (settings.widthDp * 0.95f).dp.coerceAtLeast(130.dp) + (teardropEarRadius * 2f)
+    val chargingIslandWidth = (settings.widthDp + 20).dp.coerceAtLeast(110.dp) + (teardropEarRadius * 2f)
+    val unlockIslandWidth = (settings.widthDp * 0.82f).dp.coerceAtLeast(80.dp) + (teardropEarRadius * 2f)
+    val ringerIslandWidth = (settings.widthDp * 0.95f).dp.coerceAtLeast(95.dp) + (teardropEarRadius * 2f)
 
     val bubbleSize = settings.heightDp.dp
     val dualMainShiftLeft = if (!settings.isLeftCutout) (-1).dp else 0.dp
     val compactMainFull = if (settings.isLeftCutout) {
-        (settings.widthDp * 0.76f).dp.coerceIn(132.dp, 156.dp)
+        (settings.widthDp * 0.76f).dp.coerceIn(100.dp, 156.dp)
     } else {
-        96.dp
+        (settings.widthDp * 0.60f).dp.coerceIn(80.dp, 96.dp)
     }
     val compactMainHalf = compactMainFull / 2f
 
@@ -896,7 +896,7 @@ fun IslandOverlayRoot(
         isRingerMode -> ringerIslandWidth
         isUnlock || isBluetooth -> unlockIslandWidth
         isDual -> compactMainFull + (teardropEarRadius * 2f)
-        isOccupied || hasPersistent -> settings.widthDp.dp.coerceAtLeast(124.dp) + (teardropEarRadius * 2f)
+        isOccupied || hasPersistent -> settings.widthDp.dp.coerceAtLeast(60.dp) + (teardropEarRadius * 2f)
         else -> settings.widthDp.dp + (teardropEarRadius * 2f)
     }
 
