@@ -1,11 +1,15 @@
 package com.droidbubble.app.model
 
 val DEFAULT_FEATURE_PRIORITIES = listOf(
+    "CALL",
     "MEDIA",
     "PROGRESS",
     "RECORDING",
     "NOTIFICATION",
-    "FLASHLIGHT"
+    "FLASHLIGHT",
+    "FPS",
+    "WEATHER",
+    "NETWORK_SPEED"
 )
 
 data class IslandSettings(
@@ -15,11 +19,14 @@ data class IslandSettings(
     val cornerRadiusDp: Int = 22,
     val topOffsetDp: Int = 12,
     val horizontalOffsetDp: Int = 0,
+    val isLeftCutout: Boolean = false,
+    val isTeardropCutout: Boolean = false,
     val showOutline: Boolean = true,
     val outlineColorArgb: Long = 0x33FFFFFF, // Sleek translucent silver
     val outlineThicknessDp: Float = 1.5f,
     val expandedScale: Float = 1.1f,
     val hapticsEnabled: Boolean = true,
+    val showCalls: Boolean = true,
     val showMedia: Boolean = true,
     val showNotifications: Boolean = false,
     val showLiveProgress: Boolean = true,
@@ -40,6 +47,10 @@ data class IslandSettings(
     val showNetworkSpeed: Boolean = false,
     val autoDismissNotifications: Boolean = false,
     val blurredAlbumArtBackground: Boolean = false,
+    val mediaWaveAnimation: Boolean = true,
+    val spinningAlbumArt: Boolean = false,
+    val wavyProgressBar: Boolean = true,
+    val hideOnLockScreen: Boolean = false,
     val expandDamping: Float = 0.74f,
     val expandStiffness: Float = 380f,
     val appearDamping: Float = 0.6f,

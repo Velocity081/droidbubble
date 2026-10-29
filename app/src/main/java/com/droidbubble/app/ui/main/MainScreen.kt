@@ -71,6 +71,7 @@ import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ColorLens
@@ -88,7 +89,11 @@ import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material.icons.filled.Height
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockReset
+import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.LinearScale
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsActive
@@ -606,7 +611,17 @@ fun MainScreen(
 
             item {
                 val reorderableKeys = remember {
-                    val valid = listOf("MEDIA", "NOTIFICATION", "PROGRESS", "RECORDING", "FLASHLIGHT")
+                    val valid = listOf(
+                        "CALL",
+                        "MEDIA",
+                        "NOTIFICATION",
+                        "PROGRESS",
+                        "RECORDING",
+                        "FLASHLIGHT",
+                        "FPS",
+                        "WEATHER",
+                        "NETWORK_SPEED"
+                    )
                     val list = settings.featurePriorities.filter { it in valid }.toMutableList()
                     for (v in valid) {
                         if (v !in list) list.add(v)
@@ -614,13 +629,22 @@ fun MainScreen(
                     list.toMutableStateList()
                 }
                 var draggingKey by remember { mutableStateOf<String?>(null) }
-                var dragStartIndex by remember { mutableStateOf(0) }
                 var dragOffset by remember { mutableStateOf(0f) }
                 var itemHeightPx by remember { mutableStateOf(0f) }
 
                 LaunchedEffect(settings.featurePriorities) {
                     if (draggingKey == null) {
-                        val valid = listOf("MEDIA", "NOTIFICATION", "PROGRESS", "RECORDING", "FLASHLIGHT")
+                        val valid = listOf(
+                            "CALL",
+                            "MEDIA",
+                            "NOTIFICATION",
+                            "PROGRESS",
+                            "RECORDING",
+                            "FLASHLIGHT",
+                            "FPS",
+                            "WEATHER",
+                            "NETWORK_SPEED"
+                        )
                         val list = settings.featurePriorities.filter { it in valid }.toMutableList()
                         for (v in valid) {
                             if (v !in list) list.add(v)
@@ -634,20 +658,7 @@ fun MainScreen(
 
                 val density = LocalDensity.current
                 val cardGapPx = with(density) { 4.dp.toPx() }
-                val effectiveCardHeight = if (itemHeightPx > 0f) itemHeightPx else with(density) { 62.dp.toPx() }
-                val targetIndex = if (draggingKey != null) {
-                    (dragStartIndex + (dragOffset / effectiveCardHeight).roundToInt()).coerceIn(0, reorderableKeys.size - 1)
-                } else {
-                    dragStartIndex
-                }
-
-                var lastTargetIndex by remember { mutableStateOf(-1) }
-                LaunchedEffect(targetIndex, draggingKey) {
-                    if (draggingKey != null && targetIndex != lastTargetIndex && lastTargetIndex != -1) {
-                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                    }
-                    lastTargetIndex = targetIndex
-                }
+                val effectiveCardHeight = if (itemHeightPx > 0f) itemHeightPx else with(density) { 64.dp.toPx() }
 
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -659,18 +670,6 @@ fun MainScreen(
                             val isBeingDragged = draggingKey == currentKey
                             val zIdx = if (isBeingDragged) 10f else 1f
 
-                            val shiftY = when {
-                                draggingKey == null || isBeingDragged -> 0f
-                                targetIndex > dragStartIndex && index in (dragStartIndex + 1)..targetIndex -> -effectiveCardHeight
-                                targetIndex < dragStartIndex && index in targetIndex until dragStartIndex -> effectiveCardHeight
-                                else -> 0f
-                            }
-                            val animatedShiftY by animateFloatAsState(
-                                targetValue = shiftY,
-                                animationSpec = spring(stiffness = 600f, dampingRatio = 0.82f),
-                                label = "activity_reorder_shift"
-                            )
-
                             val itemPosition = when {
                                 index == 0 -> GroupPosition.TOP
                                 index == reorderableKeys.size - 1 -> GroupPosition.BOTTOM
@@ -678,29 +677,41 @@ fun MainScreen(
                             }
 
                             val isFeatureChecked = when (currentKey) {
+                                "CALL" -> settings.showCalls
                                 "MEDIA" -> settings.showMedia
                                 "NOTIFICATION" -> settings.showNotifications
                                 "PROGRESS" -> settings.showLiveProgress
                                 "RECORDING" -> settings.showScreenRecording
                                 "FLASHLIGHT" -> settings.showFlashlight
+                                "FPS" -> settings.showFps
+                                "WEATHER" -> settings.showWeather
+                                "NETWORK_SPEED" -> settings.showNetworkSpeed
                                 else -> false
                             }
 
                             val featureTitle = when (currentKey) {
+                                "CALL" -> "Phone Calls"
                                 "MEDIA" -> "Media Player"
                                 "NOTIFICATION" -> "Incoming Notifications"
                                 "PROGRESS" -> "Live Progress & Activities"
                                 "RECORDING" -> "Screen Recording Indicator"
                                 "FLASHLIGHT" -> "Flashlight Indicator"
+                                "FPS" -> "FPS Counter"
+                                "WEATHER" -> "Weather & Temperature"
+                                "NETWORK_SPEED" -> "Wi-Fi & Network Speed"
                                 else -> currentKey
                             }
 
                             val featureIcon = when (currentKey) {
+                                "CALL" -> Icons.Default.Call
                                 "MEDIA" -> Icons.Default.MusicNote
                                 "NOTIFICATION" -> Icons.Default.Notifications
                                 "PROGRESS" -> Icons.Default.Animation
                                 "RECORDING" -> Icons.Default.Videocam
                                 "FLASHLIGHT" -> Icons.Default.FlashlightOn
+                                "FPS" -> Icons.Default.Speed
+                                "WEATHER" -> Icons.Default.WbSunny
+                                "NETWORK_SPEED" -> Icons.Default.Wifi
                                 else -> Icons.Default.Apps
                             }
 
@@ -708,7 +719,7 @@ fun MainScreen(
                                 .fillMaxWidth()
                                 .zIndex(zIdx)
                                 .onGloballyPositioned { coords ->
-                                    if (!isBeingDragged && itemHeightPx == 0f) {
+                                    if (!isBeingDragged && coords.size.height > 0) {
                                         itemHeightPx = coords.size.height.toFloat() + cardGapPx
                                     }
                                 }
@@ -718,8 +729,6 @@ fun MainScreen(
                                         scaleX = 1.02f
                                         scaleY = 1.02f
                                         shadowElevation = 14.dp.toPx()
-                                    } else {
-                                        translationY = animatedShiftY
                                     }
                                 }
 
@@ -734,31 +743,23 @@ fun MainScreen(
                                     leadingContent = {
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                                         ) {
                                             Box(
                                                 modifier = Modifier
+                                                    .size(36.dp)
                                                     .pointerInput(currentKey) {
                                                         detectVerticalDragGestures(
                                                             onDragStart = {
                                                                 isDraggingIslandActivity = true
                                                                 draggingKey = currentKey
-                                                                dragStartIndex = reorderableKeys.indexOf(currentKey)
                                                                 dragOffset = 0f
                                                                 view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                                             },
                                                             onDragEnd = {
-                                                                if (draggingKey != null) {
-                                                                    val start = dragStartIndex
-                                                                    val target = targetIndex
-                                                                    if (start in reorderableKeys.indices && target in reorderableKeys.indices && start != target) {
-                                                                        val list = reorderableKeys.toMutableList()
-                                                                        val item = list.removeAt(start)
-                                                                        list.add(target, item)
-                                                                        reorderableKeys.clear()
-                                                                        reorderableKeys.addAll(list)
-                                                                        viewModel.updateSettings { it.copy(featurePriorities = list) }
-                                                                    }
+                                                                if (draggingKey == currentKey) {
+                                                                    val updatedList = reorderableKeys.toList()
+                                                                    viewModel.updateSettings { it.copy(featurePriorities = updatedList) }
                                                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                                                 }
                                                                 draggingKey = null
@@ -772,11 +773,27 @@ fun MainScreen(
                                                             },
                                                             onVerticalDrag = { change, dragAmount ->
                                                                 change.consume()
+                                                                if (draggingKey != currentKey) return@detectVerticalDragGestures
                                                                 dragOffset += dragAmount
+                                                                val currentIndex = reorderableKeys.indexOf(currentKey)
+                                                                if (currentIndex == -1) return@detectVerticalDragGestures
+                                                                val step = if (itemHeightPx > 0f) itemHeightPx else effectiveCardHeight
+                                                                val threshold = step * 0.5f
+                                                                if (dragOffset > threshold && currentIndex < reorderableKeys.lastIndex) {
+                                                                    val item = reorderableKeys.removeAt(currentIndex)
+                                                                    reorderableKeys.add(currentIndex + 1, item)
+                                                                    dragOffset -= step
+                                                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                                                } else if (dragOffset < -threshold && currentIndex > 0) {
+                                                                    val item = reorderableKeys.removeAt(currentIndex)
+                                                                    reorderableKeys.add(currentIndex - 1, item)
+                                                                    dragOffset += step
+                                                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                                                }
                                                             }
                                                         )
-                                                    }
-                                                    .padding(end = 4.dp)
+                                                    },
+                                                contentAlignment = Alignment.Center
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Default.Menu,
@@ -798,11 +815,15 @@ fun MainScreen(
                                             onCheckedChange = { checked ->
                                                 viewModel.updateSettings { s ->
                                                     when (currentKey) {
+                                                        "CALL" -> s.copy(showCalls = checked)
                                                         "MEDIA" -> s.copy(showMedia = checked)
                                                         "NOTIFICATION" -> s.copy(showNotifications = checked)
                                                         "PROGRESS" -> s.copy(showLiveProgress = checked)
                                                         "RECORDING" -> s.copy(showScreenRecording = checked)
                                                         "FLASHLIGHT" -> s.copy(showFlashlight = checked)
+                                                        "FPS" -> s.copy(showFps = checked)
+                                                        "WEATHER" -> s.copy(showWeather = checked)
+                                                        "NETWORK_SPEED" -> s.copy(showNetworkSpeed = checked)
                                                         else -> s
                                                     }
                                                 }
@@ -878,82 +899,6 @@ fun MainScreen(
                                     onCheckedChange = { show ->
                                         viewModel.updateSettings { it.copy(showRingerMode = show) }
                                     }
-                                )
-                            }
-                        )
-                    }
-                }
-            }
-
-            // SECTION 6: PERSISTENT ISLAND VIEWS
-            item {
-                SectionHeader(
-                    title = "Persistent Island Views",
-                    icon = Icons.Default.Widgets,
-                    badge = "Coming soon",
-                    badgeColor = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .alpha(0.5f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    SettingsCardItem(position = GroupPosition.TOP) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = {
-                                Text("FPS Counter", fontWeight = FontWeight.SemiBold)
-                            },
-                            leadingContent = {
-                                Icon(Icons.Default.Speed, contentDescription = null, tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = false,
-                                    onCheckedChange = null,
-                                    enabled = false
-                                )
-                            }
-                        )
-                    }
-
-                    SettingsCardItem(position = GroupPosition.MIDDLE) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = {
-                                Text("Weather & Temperature", fontWeight = FontWeight.SemiBold)
-                            },
-                            leadingContent = {
-                                Icon(Icons.Default.WbSunny, contentDescription = null, tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = false,
-                                    onCheckedChange = null,
-                                    enabled = false
-                                )
-                            }
-                        )
-                    }
-
-                    SettingsCardItem(position = GroupPosition.BOTTOM) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = {
-                                Text("Wi-Fi & Network Speed", fontWeight = FontWeight.SemiBold)
-                            },
-                            leadingContent = {
-                                Icon(Icons.Default.Wifi, contentDescription = null, tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = false,
-                                    onCheckedChange = null,
-                                    enabled = false
                                 )
                             }
                         )
@@ -1666,6 +1611,26 @@ fun DimensionsPage(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
+                val currentCutoutMode = when {
+                    settings.isTeardropCutout -> CutoutModeOption.TEARDROP
+                    settings.isLeftCutout -> CutoutModeOption.LEFT
+                    else -> CutoutModeOption.CENTER
+                }
+                CutoutPositionSelectorCard(
+                    selectedMode = currentCutoutMode,
+                    onSelectMode = { mode ->
+                        onUpdateSettings { s ->
+                            when (mode) {
+                                CutoutModeOption.CENTER -> s.copy(isLeftCutout = false, isTeardropCutout = false)
+                                CutoutModeOption.LEFT -> s.copy(isLeftCutout = true, isTeardropCutout = false)
+                                CutoutModeOption.TEARDROP -> s.copy(isLeftCutout = false, isTeardropCutout = true)
+                            }
+                        }
+                    }
+                )
+            }
+
+            item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -1743,6 +1708,226 @@ fun DimensionsPage(
                     }
                 }
             }
+        }
+    }
+}
+
+enum class CutoutModeOption {
+    CENTER,
+    LEFT,
+    TEARDROP
+}
+
+@Composable
+fun CutoutPositionSelectorCard(
+    selectedMode: CutoutModeOption,
+    onSelectMode: (CutoutModeOption) -> Unit
+) {
+    SettingsCardItem(position = GroupPosition.SINGLE) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Camera Cut-out Position",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                CutoutPositionOptionButton(
+                    label = "Center",
+                    mode = CutoutModeOption.CENTER,
+                    isSelected = selectedMode == CutoutModeOption.CENTER,
+                    onClick = { onSelectMode(CutoutModeOption.CENTER) },
+                    modifier = Modifier.weight(1f)
+                )
+                CutoutPositionOptionButton(
+                    label = "Left",
+                    mode = CutoutModeOption.LEFT,
+                    isSelected = selectedMode == CutoutModeOption.LEFT,
+                    onClick = { onSelectMode(CutoutModeOption.LEFT) },
+                    modifier = Modifier.weight(1f)
+                )
+                CutoutPositionOptionButton(
+                    label = "Tear-drop",
+                    mode = CutoutModeOption.TEARDROP,
+                    isSelected = selectedMode == CutoutModeOption.TEARDROP,
+                    onClick = { onSelectMode(CutoutModeOption.TEARDROP) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CutoutPositionOptionButton(
+    label: String,
+    mode: CutoutModeOption,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val containerColor by animateColorAsState(
+        targetValue = if (isSelected) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f)
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.55f)
+        },
+        label = "cutoutBtnBg"
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (isSelected) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
+        },
+        label = "cutoutBtnBorder"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (isSelected) {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        label = "cutoutBtnContent"
+    )
+    val bezelStrokeColor = if (isSelected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+    }
+    val screenFillColor = if (isSelected) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f)
+    }
+    val cutoutDotColor = if (isSelected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Surface(
+        onClick = onClick,
+        modifier = modifier.height(106.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = containerColor,
+        border = BorderStroke(if (isSelected) 2.dp else 1.dp, borderColor)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 12.dp, bottom = 10.dp, start = 6.dp, end = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Cropped top phone bezel illustration with just the selfie camera circle (or tear-drop notch)
+            androidx.compose.foundation.Canvas(
+                modifier = Modifier
+                    .width(74.dp)
+                    .height(50.dp)
+            ) {
+                val strokePx = 2.3.dp.toPx()
+                val cornerPx = 13.dp.toPx()
+                val padX = 4.dp.toPx()
+                val topY = 4.dp.toPx()
+                val bottomY = size.height
+                val leftX = padX
+                val rightX = size.width - padX
+
+                val bezelFillPath = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(leftX, bottomY)
+                    lineTo(leftX, topY + cornerPx)
+                    quadraticTo(leftX, topY, leftX + cornerPx, topY)
+                    lineTo(rightX - cornerPx, topY)
+                    quadraticTo(rightX, topY, rightX, topY + cornerPx)
+                    lineTo(rightX, bottomY)
+                    close()
+                }
+                drawPath(path = bezelFillPath, color = screenFillColor)
+
+                val bezelOutlinePath = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(leftX, bottomY)
+                    lineTo(leftX, topY + cornerPx)
+                    quadraticTo(leftX, topY, leftX + cornerPx, topY)
+                    lineTo(rightX - cornerPx, topY)
+                    quadraticTo(rightX, topY, rightX, topY + cornerPx)
+                    lineTo(rightX, bottomY)
+                }
+                drawPath(
+                    path = bezelOutlinePath,
+                    color = bezelStrokeColor,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(
+                        width = strokePx,
+                        cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                        join = androidx.compose.ui.graphics.StrokeJoin.Round
+                    )
+                )
+
+                val centerX = size.width / 2f
+                when (mode) {
+                    CutoutModeOption.CENTER -> {
+                        val holeY = topY + 12.dp.toPx()
+                        val holeRadius = 4.2.dp.toPx()
+                        drawCircle(
+                            color = cutoutDotColor,
+                            radius = holeRadius,
+                            center = androidx.compose.ui.geometry.Offset(centerX, holeY)
+                        )
+                    }
+                    CutoutModeOption.LEFT -> {
+                        val holeY = topY + 12.dp.toPx()
+                        val holeRadius = 4.2.dp.toPx()
+                        val holeX = leftX + 14.dp.toPx()
+                        drawCircle(
+                            color = cutoutDotColor,
+                            radius = holeRadius,
+                            center = androidx.compose.ui.geometry.Offset(holeX, holeY)
+                        )
+                    }
+                    CutoutModeOption.TEARDROP -> {
+                        // Outward-rounded top corners blending from the top bezel into a centered tear-drop semicircle
+                        val dropR = 7.dp.toPx()
+                        val earR = 5.dp.toPx()
+                        val dropBottomY = topY + dropR * 1.45f
+                        val teardropPath = androidx.compose.ui.graphics.Path().apply {
+                            moveTo(centerX - dropR - earR, topY)
+                            quadraticTo(
+                                centerX - dropR, topY,
+                                centerX - dropR * 0.88f, topY + dropR * 0.55f
+                            )
+                            cubicTo(
+                                centerX - dropR * 0.65f, dropBottomY,
+                                centerX + dropR * 0.65f, dropBottomY,
+                                centerX + dropR * 0.88f, topY + dropR * 0.55f
+                            )
+                            quadraticTo(
+                                centerX + dropR, topY,
+                                centerX + dropR + earR, topY
+                            )
+                            close()
+                        }
+                        drawPath(path = teardropPath, color = cutoutDotColor)
+                    }
+                }
+            }
+
+            Text(
+                text = label,
+                fontSize = 12.5.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                color = contentColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -1882,7 +2067,7 @@ fun AppearancePage(
                         )
                     }
 
-                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.showInLandscape) {
+                    SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.showInLandscape) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             headlineContent = { Text("Show in Landscape", fontWeight = FontWeight.SemiBold) },
@@ -1894,6 +2079,74 @@ fun AppearancePage(
                                     checked = settings.showInLandscape,
                                     onCheckedChange = { inLandscape ->
                                         onUpdateSettings { it.copy(showInLandscape = inLandscape) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+
+            item {
+                SectionHeader(
+                    title = "Media Player Customisation",
+                    icon = Icons.Default.MusicNote
+                )
+            }
+
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    SettingsCardItem(position = GroupPosition.TOP, isActive = settings.mediaWaveAnimation) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Ambient Album Wave", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Icon(Icons.Default.GraphicEq, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.mediaWaveAnimation,
+                                    onCheckedChange = { enabled ->
+                                        onUpdateSettings { it.copy(mediaWaveAnimation = enabled) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.wavyProgressBar) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Wavy Progress Scrubber", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Icon(Icons.Default.LinearScale, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.wavyProgressBar,
+                                    onCheckedChange = { enabled ->
+                                        onUpdateSettings { it.copy(wavyProgressBar = enabled) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.spinningAlbumArt) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Spinning Vinyl Cover", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Icon(Icons.Default.Album, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.spinningAlbumArt,
+                                    onCheckedChange = { enabled ->
+                                        onUpdateSettings { it.copy(spinningAlbumArt = enabled) }
                                     }
                                 )
                             }
@@ -1988,7 +2241,7 @@ fun AccessibilityPage(
                         )
                     }
 
-                    SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.dismissMediaOnPause) {
+                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.dismissMediaOnPause) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             headlineContent = { Text("Dismiss on Pause", fontWeight = FontWeight.SemiBold) },
@@ -2001,6 +2254,25 @@ fun AccessibilityPage(
                                     checked = settings.dismissMediaOnPause,
                                     onCheckedChange = { dismiss ->
                                         onUpdateSettings { it.copy(dismissMediaOnPause = dismiss) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.hideOnLockScreen) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Hide on Lock Screen", fontWeight = FontWeight.SemiBold) },
+                            supportingContent = { Text("Do not show the island when the phone is locked, even if an activity is active") },
+                            leadingContent = {
+                                Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.hideOnLockScreen,
+                                    onCheckedChange = { hide ->
+                                        onUpdateSettings { it.copy(hideOnLockScreen = hide) }
                                     }
                                 )
                             }

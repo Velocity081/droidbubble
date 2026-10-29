@@ -22,6 +22,7 @@ import android.os.Bundle
 import android.os.IBinder
 import kotlin.math.roundToInt
 import android.provider.Settings
+import com.droidbubble.app.model.ActiveCallState
 import com.droidbubble.app.model.MediaInfo
 import com.droidbubble.app.model.NotificationInfo
 import com.droidbubble.app.model.ScreenRecordingState
@@ -186,6 +187,13 @@ class IslandOverlayService : Service() {
                         ScreenRecordingState(isRecording = isRec, durationSeconds = 42)
                     )
                 }
+                "com.droidbubble.app.ACTION_SIMULATE_CALL" -> {
+                    val isAct = intent.getBooleanExtra("isActive", true)
+                    val caller = intent.getStringExtra("callerName") ?: "Alex Rivera"
+                    IslandStateManager.updateCallState(
+                        ActiveCallState(isActive = isAct, callerName = caller, durationSeconds = 84)
+                    )
+                }
                 "com.droidbubble.app.ACTION_EXPAND" -> {
                     IslandStateManager.expand()
                 }
@@ -196,6 +204,7 @@ class IslandOverlayService : Service() {
                     IslandStateManager.updateMedia(null)
                     IslandStateManager.updateNotification(null)
                     IslandStateManager.updateRecordingState(ScreenRecordingState(isRecording = false))
+                    IslandStateManager.updateCallState(ActiveCallState(isActive = false))
                     IslandStateManager.updateFlashlightState(false)
                     IslandStateManager.collapse()
                 }
@@ -255,12 +264,20 @@ class IslandOverlayService : Service() {
                 return
             }
             if (action == Intent.ACTION_USER_PRESENT) {
+                IslandStateManager.setDeviceLocked(false)
                 IslandStateManager.triggerUnlockEvent()
+                return
+            }
+            if (action == Intent.ACTION_SCREEN_OFF) {
+                val km = context?.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+                IslandStateManager.setDeviceLocked(km?.isKeyguardLocked ?: true)
                 return
             }
             if (action == Intent.ACTION_SCREEN_ON) {
                 val km = context?.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
-                if (km != null && !km.isKeyguardLocked) {
+                val locked = km?.isKeyguardLocked == true
+                IslandStateManager.setDeviceLocked(locked)
+                if (km != null && !locked) {
                     IslandStateManager.triggerUnlockEvent()
                 }
                 return
@@ -295,12 +312,14 @@ class IslandOverlayService : Service() {
                 val wattage = BatteryUtils.getChargingWattage(ctx, batteryIntent)
                 IslandStateManager.triggerChargingEvent(pct, wattage)
 
-                // Fast charging (USB-PD / QuickCharge) often takes ~1-1.5s to negotiate higher wattage
+                // Poll charging wattage at 400ms, 1000ms, 1700ms, and 2400ms so fast-charging negotiation updates live
                 serviceScope.launch {
-                    delay(1200)
-                    if (IslandStateManager.isChargingActive) {
+                    val sampleDelays = longArrayOf(400L, 600L, 700L, 700L)
+                    for (waitMs in sampleDelays) {
+                        delay(waitMs)
+                        if (!IslandStateManager.isChargingActive) break
                         val updated = BatteryUtils.getChargingWattage(this@IslandOverlayService)
-                        if (updated != null && updated != wattage) {
+                        if (updated != null && updated > 0.0) {
                             IslandStateManager.updateChargingWattage(updated)
                         }
                     }
@@ -411,6 +430,10 @@ class IslandOverlayService : Service() {
         }
         IslandStateManager.dismissMediaOnPause = currentSettings.dismissMediaOnPause
         IslandStateManager.autoDismissNotifications = currentSettings.autoDismissNotifications
+        val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+        if (km != null) {
+            IslandStateManager.setDeviceLocked(km.isKeyguardLocked)
+        }
         lifecycleOwner.performRestore(null)
         lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
         lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_START)
@@ -431,6 +454,8 @@ class IslandOverlayService : Service() {
             addAction("com.droidbubble.app.ACTION_SIMULATE_NOTIFICATION")
             addAction("com.droidbubble.app.ACTION_SIMULATE_PROGRESS")
             addAction("com.droidbubble.app.ACTION_SIMULATE_RECORDING")
+            addAction("com.droidbubble.app.ACTION_SIMULATE_CALL")
+            addAction("com.droidbubble.app.ACTION_SIMULATE_RINGER")
             addAction("com.droidbubble.app.ACTION_EXPAND")
             addAction("com.droidbubble.app.ACTION_COLLAPSE")
             addAction("com.droidbubble.app.ACTION_RESET")
@@ -446,6 +471,7 @@ class IslandOverlayService : Service() {
             addAction("android.os.action.CHARGING")
             addAction(Intent.ACTION_USER_PRESENT)
             addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SCREEN_OFF)
             addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED)
             addAction("android.bluetooth.a2dp.profile.action.CONNECTION_STATE_CHANGED")
             addAction("android.bluetooth.headset.profile.action.CONNECTION_STATE_CHANGED")
@@ -552,34 +578,26 @@ class IslandOverlayService : Service() {
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
 
         val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-        val allowedInOrientation = currentSettings.isEnabled && (currentSettings.showInLandscape || !isLandscape)
+        val isDeviceLocked = IslandStateManager.isDeviceLocked.value
+        val allowedInOrientation = currentSettings.isEnabled && (currentSettings.showInLandscape || !isLandscape) && (!currentSettings.hideOnLockScreen || !isDeviceLocked)
         val isOccupied = IslandStateManager.isOccupied && allowedInOrientation
         val hasPersistentWidgets = (currentSettings.showFps || currentSettings.showWeather || currentSettings.showNetworkSpeed) && allowedInOrientation
         val shouldShowCompact = (isOccupied || currentSettings.alwaysShowPill || hasPersistentWidgets) && allowedInOrientation
-        val isCharging = currentSettings.showCharging && IslandStateManager.isChargingActive
-        val activeCount = (if (IslandStateManager.isRecordingActive) 1 else 0) +
-                (if (IslandStateManager.isNotificationActive) 1 else 0) +
-                (if (IslandStateManager.isMediaActive) 1 else 0) +
-                (if (IslandStateManager.isProgressActive) 1 else 0) +
-                (if (IslandStateManager.isFlashlightActive) 1 else 0)
-        val isDual = !isCharging && activeCount >= 2
 
-        val totalWidthDp = if (isCharging) {
-            val chargingPillWidth = (currentSettings.widthDp + 20f).coerceAtLeast(140f)
-            chargingPillWidth + 80f
-        } else if (isDual) {
-            val mainHalf = (currentSettings.widthDp * 0.74f) / 2f
-            val rightEdge = mainHalf + 8f + currentSettings.heightDp + 40f
-            (rightEdge * 2f).coerceAtLeast(currentSettings.widthDp + 80f)
-        } else {
-            currentSettings.widthDp + 80f
-        }
+        val mainHalf = (currentSettings.widthDp * 0.90f).coerceAtLeast(124f) / 2f
+        val dualRightEdge = mainHalf + 8f + currentSettings.heightDp + 44f
+        val chargingEdge = ((currentSettings.widthDp + 20f).coerceAtLeast(140f) + 80f) / 2f
+        val totalWidthDp = (maxOf(dualRightEdge, chargingEdge) * 2f).coerceAtLeast(currentSettings.widthDp + 100f)
 
         val initialWidth = if (shouldShowCompact) {
-            ((totalWidthDp + 2f * kotlin.math.abs(currentSettings.horizontalOffsetDp)) * density).toInt()
+            if (currentSettings.isLeftCutout) {
+                WindowManager.LayoutParams.MATCH_PARENT
+            } else {
+                ((totalWidthDp + 2f * kotlin.math.abs(currentSettings.horizontalOffsetDp)) * density).toInt()
+            }
         } else 1
         val initialHeight = if (shouldShowCompact) {
-            ((currentSettings.topOffsetDp + currentSettings.heightDp + 4) * density).toInt()
+            ((currentSettings.topOffsetDp + currentSettings.heightDp + 12) * density).toInt()
         } else 1
         val initialFlags = if (isOccupied || hasPersistentWidgets) flags else (flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
 
@@ -648,16 +666,18 @@ class IslandOverlayService : Service() {
                     IslandStateManager.activeMedia,
                     IslandStateManager.activeNotification,
                     IslandStateManager.activeProgress,
-                    IslandStateManager.screenRecordingState
-                ) { _, _, _, _ -> Unit },
+                    IslandStateManager.screenRecordingState,
+                    IslandStateManager.activeCallState
+                ) { _, _, _, _, _ -> Unit },
                 kotlinx.coroutines.flow.combine(
                     IslandStateManager.activeCharging,
                     IslandStateManager.isUnlocked,
                     IslandStateManager.isBluetoothConnected,
                     IslandStateManager.activeRingerMode,
                     IslandStateManager.isFlashlightOn
-                ) { _, _, _, _, _ -> Unit }
-            ) { expanded, _, _ -> expanded }.collectLatest { expanded ->
+                ) { _, _, _, _, _ -> Unit },
+                IslandStateManager.isDeviceLocked
+            ) { expanded, _, _, _ -> expanded }.collectLatest { expanded ->
                 updateWindowState(expanded)
             }
         }
@@ -734,7 +754,12 @@ class IslandOverlayService : Service() {
         val density = resources.displayMetrics.density
 
         val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-        val allowedInOrientation = currentSettings.isEnabled && (currentSettings.showInLandscape || !isLandscape)
+        val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+        if (km != null) {
+            IslandStateManager.setDeviceLocked(km.isKeyguardLocked)
+        }
+        val isDeviceLocked = IslandStateManager.isDeviceLocked.value
+        val allowedInOrientation = currentSettings.isEnabled && (currentSettings.showInLandscape || !isLandscape) && (!currentSettings.hideOnLockScreen || !isDeviceLocked)
 
         if (!allowedInOrientation) {
             collapseJob?.cancel()
@@ -773,7 +798,8 @@ class IslandOverlayService : Service() {
             val isBluetooth = currentSettings.showBluetooth && IslandStateManager.isBluetoothActive
             val isRingerMode = currentSettings.showRingerMode && IslandStateManager.isRingerModeActive
             val isFlashlight = currentSettings.showFlashlight && IslandStateManager.isFlashlightActive
-            val isOccupied = (currentSettings.showMedia && IslandStateManager.isMediaActive) ||
+            val isOccupied = (currentSettings.showCalls && IslandStateManager.isCallActive) ||
+                    (currentSettings.showMedia && IslandStateManager.isMediaActive) ||
                     (currentSettings.showNotifications && IslandStateManager.isNotificationActive) ||
                     (currentSettings.showLiveProgress && IslandStateManager.isProgressActive) ||
                     (currentSettings.showScreenRecording && IslandStateManager.isRecordingActive) ||
@@ -784,29 +810,13 @@ class IslandOverlayService : Service() {
                     isRingerMode
             val hasPersistentWidgets = currentSettings.showFps || currentSettings.showWeather || currentSettings.showNetworkSpeed
             val shouldShowCompact = isOccupied || currentSettings.alwaysShowPill || hasPersistentWidgets
-            val activeCount = (if (currentSettings.showScreenRecording && IslandStateManager.isRecordingActive) 1 else 0) +
-                    (if (currentSettings.showNotifications && IslandStateManager.isNotificationActive) 1 else 0) +
-                    (if (currentSettings.showMedia && IslandStateManager.isMediaActive) 1 else 0) +
-                    (if (currentSettings.showLiveProgress && IslandStateManager.isProgressActive) 1 else 0) +
-                    (if (isFlashlight) 1 else 0)
-            val isDual = !isCharging && !isUnlock && !isBluetooth && !isRingerMode && activeCount >= 2
 
-            val totalWidthDp = if (isCharging) {
-                val chargingPillWidth = (currentSettings.widthDp + 20f).coerceAtLeast(140f)
-                chargingPillWidth + 80f
-            } else if (isRingerMode) {
-                val pillWidth = (currentSettings.widthDp * 0.95f).coerceAtLeast(130f)
-                pillWidth + 80f
-            } else if (isUnlock || isBluetooth) {
-                val pillWidth = (currentSettings.widthDp * 0.82f).coerceAtLeast(108f)
-                pillWidth + 80f
-            } else if (isDual) {
-                val mainHalf = (currentSettings.widthDp * 0.74f) / 2f
-                val rightEdge = mainHalf + 8f + currentSettings.heightDp + 40f
-                (rightEdge * 2f).coerceAtLeast(currentSettings.widthDp + 80f)
-            } else {
-                currentSettings.widthDp + 80f
-            }
+            // Use a unified compact window width across all compact states (single, dual, charging, unlock, ringer)
+            // so WindowManager never resizes params.width mid-animation, completely eliminating horizontal teleporting!
+            val mainHalf = (currentSettings.widthDp * 0.90f).coerceAtLeast(124f) / 2f
+            val dualRightEdge = mainHalf + 8f + currentSettings.heightDp + 44f
+            val chargingEdge = ((currentSettings.widthDp + 20f).coerceAtLeast(140f) + 80f) / 2f
+            val totalWidthDp = (maxOf(dualRightEdge, chargingEdge) * 2f).coerceAtLeast(currentSettings.widthDp + 100f)
 
             fun applyCompactBounds() {
                 collapseJob?.cancel()
@@ -816,11 +826,16 @@ class IslandOverlayService : Service() {
                     } else {
                         params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
                     }
+                    val compactWindowWidth = if (currentSettings.isLeftCutout) {
+                        WindowManager.LayoutParams.MATCH_PARENT
+                    } else {
+                        ((totalWidthDp + 2f * kotlin.math.abs(currentSettings.horizontalOffsetDp)) * density).toInt()
+                    }
                     applyLayoutParams(
                         view = view,
                         params = params,
-                        width = ((totalWidthDp + 2f * kotlin.math.abs(currentSettings.horizontalOffsetDp)) * density).toInt(),
-                        height = ((currentSettings.topOffsetDp + currentSettings.heightDp + 4) * density).toInt(),
+                        width = compactWindowWidth,
+                        height = ((currentSettings.topOffsetDp + currentSettings.heightDp + 12) * density).toInt(),
                         x = 0,
                         y = 0,
                         gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL,
@@ -847,12 +862,15 @@ class IslandOverlayService : Service() {
                 return
             }
 
+            val speedFactor = currentSettings.animationSpeed.coerceIn(0.4f, 2.5f)
+            val collapseDelayMs = (560f / speedFactor).toLong().coerceIn(380L, 950L)
+
             if (wasExpanded) {
                 wasExpanded = false
                 isCollapsing = true
-                // Keep MATCH_PARENT for 400ms so the user sees the collapse animation smoothly finish in full!
+                // Keep MATCH_PARENT until the spring collapse animation has completely settled!
                 collapseJob = serviceScope.launch {
-                    kotlinx.coroutines.delay(400)
+                    kotlinx.coroutines.delay(collapseDelayMs)
                     isCollapsing = false
                     if (!IslandStateManager.isExpanded.value) {
                         applyCompactBounds()
@@ -862,7 +880,7 @@ class IslandOverlayService : Service() {
                 // When unoccupied and not always showing pill and no persistent widgets, keep bounds briefly for the smooth shrink-to-middle animation, then collapse
                 collapseJob?.cancel()
                 collapseJob = serviceScope.launch {
-                    kotlinx.coroutines.delay(360)
+                    kotlinx.coroutines.delay((420f / speedFactor).toLong().coerceIn(320L, 750L))
                     if (!isOccupied && !IslandStateManager.isExpanded.value && !currentSettings.alwaysShowPill && !hasPersistentWidgets) {
                         applyLayoutParams(
                             view = view,

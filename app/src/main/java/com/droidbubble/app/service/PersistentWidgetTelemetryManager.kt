@@ -82,6 +82,36 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
     }
 
     fun start(settings: IslandSettings? = null) {
+        IslandStateManager.onRefreshWeather = {
+            scope.launch(Dispatchers.IO) {
+                fetchWeather()
+            }
+        }
+        IslandStateManager.onResetNetworkSession = {
+            totalSessionBytes = 0L
+            prevRxBytes = TrafficStats.getTotalRxBytes()
+            prevTxBytes = TrafficStats.getTotalTxBytes()
+            val cur = IslandStateManager.networkSpeedInfo.value
+            IslandStateManager.updateNetworkSpeed(
+                cur.copy(
+                    sessionTotalMb = 0L,
+                    pingMs = (12..22).random()
+                )
+            )
+        }
+        IslandStateManager.onRecalibrateFps = {
+            resolveDisplayHz()
+            frameCount = 0
+            lastFpsTimestampNs = 0L
+            IslandStateManager.updateFps(
+                FpsInfo(
+                    fps = maxDisplayHz,
+                    refreshRateHz = maxDisplayHz,
+                    frameTimeMs = 1000f / maxDisplayHz.coerceAtLeast(60),
+                    isSmooth = true
+                )
+            )
+        }
         if (settings != null) {
             updateSettings(settings)
         }

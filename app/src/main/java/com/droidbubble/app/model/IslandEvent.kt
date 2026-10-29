@@ -66,7 +66,18 @@ data class ScreenRecordingState(
     val isPaused: Boolean = false
 )
 
+data class ActiveCallState(
+    val isActive: Boolean = false,
+    val callerName: String = "",
+    val packageName: String = "",
+    val durationSeconds: Long = 0L,
+    val isMuted: Boolean = false,
+    val isSpeaker: Boolean = false,
+    val contentIntent: PendingIntent? = null
+)
+
 enum class IslandPriority {
+    CALL,
     SCREEN_RECORDING,
     PROGRESS,
     POP_NOTIFICATION,
@@ -77,4 +88,3 @@ enum class IslandPriority {
     NETWORK_SPEED,
     IDLE
 }
-

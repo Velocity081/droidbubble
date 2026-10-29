@@ -1,5 +1,6 @@
 package com.droidbubble.app.island
 
+import com.droidbubble.app.model.ActiveCallState
 import com.droidbubble.app.model.IslandPriority
 import com.droidbubble.app.model.MediaInfo
 import com.droidbubble.app.model.NotificationInfo
@@ -36,6 +37,18 @@ object IslandStateManager {
     val isUnlocked: StateFlow<Boolean> = _isUnlocked.asStateFlow()
     private var unlockJob: Job? = null
 
+    private val _isDeviceLocked = MutableStateFlow(false)
+    val isDeviceLocked: StateFlow<Boolean> = _isDeviceLocked.asStateFlow()
+
+    fun setDeviceLocked(locked: Boolean) {
+        if (_isDeviceLocked.value != locked) {
+            _isDeviceLocked.value = locked
+            if (locked && _isExpanded.value) {
+                collapse()
+            }
+        }
+    }
+
     private val _isBluetoothConnected = MutableStateFlow(false)
     val isBluetoothConnected: StateFlow<Boolean> = _isBluetoothConnected.asStateFlow()
     private var bluetoothJob: Job? = null
@@ -61,6 +74,9 @@ object IslandStateManager {
 
     private val _screenRecordingState = MutableStateFlow(ScreenRecordingState())
     val screenRecordingState: StateFlow<ScreenRecordingState> = _screenRecordingState.asStateFlow()
+
+    private val _activeCallState = MutableStateFlow(ActiveCallState())
+    val activeCallState: StateFlow<ActiveCallState> = _activeCallState.asStateFlow()
 
     private val _isExpanded = MutableStateFlow(false)
     val isExpanded: StateFlow<Boolean> = _isExpanded.asStateFlow()
@@ -122,6 +138,15 @@ object IslandStateManager {
     var onStopRecording: (() -> Unit)? = null
     var onTogglePauseRecording: (() -> Unit)? = null
 
+    // Callbacks for active phone call controls
+    var onEndCall: (() -> Unit)? = null
+    var onToggleCallMuteOrSpeaker: (() -> Unit)? = null
+
+    // Callbacks for persistent widget actions
+    var onRefreshWeather: (() -> Unit)? = null
+    var onResetNetworkSession: (() -> Unit)? = null
+    var onRecalibrateFps: (() -> Unit)? = null
+
     // Callback to dismiss notification from listener
     var onDismissNotification: ((String) -> Unit)? = null
 
@@ -143,6 +168,9 @@ object IslandStateManager {
 
     val isRecordingActive: Boolean
         get() = _screenRecordingState.value.isRecording
+
+    val isCallActive: Boolean
+        get() = _activeCallState.value.isActive
 
     val isNotificationActive: Boolean
         get() = _activeNotification.value != null
@@ -178,12 +206,13 @@ object IslandStateManager {
         get() = _activeRingerMode.value != null
 
     val isOccupied: Boolean
-        get() = isRecordingActive || isNotificationActive || isMediaActive || isProgressActive || isChargingActive || isUnlockActive || isBluetoothActive || isFlashlightActive || isRingerModeActive
+        get() = isCallActive || isRecordingActive || isNotificationActive || isMediaActive || isProgressActive || isChargingActive || isUnlockActive || isBluetoothActive || isFlashlightActive || isRingerModeActive
 
-    // Live priority determination: Media is always primary, then Flashlight right after media player, then Progress, Screen Recording, and Notification alerts last
+    // Live priority determination: Call is top priority, then Media, Flashlight, Progress, Screen Recording, and Notification alerts last
     val currentPriority: IslandPriority
         get() {
             return when {
+                isCallActive -> IslandPriority.CALL
                 isMediaActive -> IslandPriority.MEDIA
                 isFlashlightActive -> IslandPriority.FLASHLIGHT
                 isProgressActive -> IslandPriority.PROGRESS
@@ -419,6 +448,14 @@ object IslandStateManager {
         val wasRecording = _screenRecordingState.value.isRecording
         _screenRecordingState.value = state
         if (wasRecording && !state.isRecording && _isExpanded.value && (_expandedPriority.value == IslandPriority.SCREEN_RECORDING || !isOccupied)) {
+            collapse()
+        }
+    }
+
+    fun updateCallState(state: ActiveCallState) {
+        val wasActive = _activeCallState.value.isActive
+        _activeCallState.value = state
+        if (wasActive && !state.isActive && _isExpanded.value && (_expandedPriority.value == IslandPriority.CALL || !isOccupied)) {
             collapse()
         }
     }

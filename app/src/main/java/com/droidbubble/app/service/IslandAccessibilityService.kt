@@ -1,6 +1,8 @@
 package com.droidbubble.app.service
 
 import android.accessibilityservice.AccessibilityService
+import android.app.KeyguardManager
+import android.content.Context
 import android.view.accessibility.AccessibilityEvent
 import com.droidbubble.app.island.IslandStateManager
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,11 +22,19 @@ class IslandAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         instance = this
         _isConnected.value = true
+        val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+        if (km != null) {
+            IslandStateManager.setDeviceLocked(km.isKeyguardLocked)
+        }
         IslandOverlayService.onAccessibilityServiceChanged(this)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+            if (km != null) {
+                IslandStateManager.setDeviceLocked(km.isKeyguardLocked)
+            }
             val pkg = event.packageName?.toString() ?: return
             if (pkg == IslandStateManager.dismissedMediaPackage) {
                 IslandStateManager.unDismissMedia(pkg)

@@ -23,6 +23,7 @@ import android.service.notification.StatusBarNotification
 import android.util.Log
 import com.droidbubble.app.data.SettingsRepository
 import com.droidbubble.app.island.IslandStateManager
+import com.droidbubble.app.model.ActiveCallState
 import com.droidbubble.app.model.IslandSettings
 import com.droidbubble.app.model.MediaInfo
 import com.droidbubble.app.model.NotificationAction
@@ -247,6 +248,7 @@ class NotificationReceiverService : NotificationListenerService() {
         controllerCallbacks.clear()
         activeMediaController = null
         recordingTimerJob?.cancel()
+        callTimerJob?.cancel()
         serviceScope.cancel()
     }
 
@@ -566,6 +568,180 @@ class NotificationReceiverService : NotificationListenerService() {
     private var activePauseAction: Notification.Action? = null
     private var activeResumeAction: Notification.Action? = null
 
+    private var systemCallKey: String? = null
+    private var callTimerJob: Job? = null
+    private var callStartTimeMs: Long = 0L
+    private var activeEndCallAction: Notification.Action? = null
+    private var activeMuteOrSpeakerAction: Notification.Action? = null
+
+    private fun isOngoingCallNotification(sbn: StatusBarNotification, notification: Notification): Boolean {
+        val isOngoing = sbn.isOngoing ||
+                (notification.flags and Notification.FLAG_ONGOING_EVENT) != 0 ||
+                (notification.flags and Notification.FLAG_NO_CLEAR) != 0
+        if (!isOngoing) return false
+
+        val extras = notification.extras ?: return false
+        val template = extras.getString(Notification.EXTRA_TEMPLATE) ?: ""
+        val isCallCategory = notification.category == Notification.CATEGORY_CALL || template.contains("CallStyle")
+
+        val actions = notification.actions
+        val actionTitles = actions?.mapNotNull { it?.title?.toString()?.lowercase(java.util.Locale.ROOT) } ?: emptyList()
+
+        val hasAnswerOrDecline = actionTitles.any {
+            it.contains("answer") || it.contains("accept") || it.contains("decline") || it.contains("reject")
+        }
+        if (hasAnswerOrDecline) {
+            // Incoming (ringing) call -> user opted for active/ongoing calls only
+            return false
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val callType = extras.getInt("android.callType", -1)
+            if (callType == Notification.CallStyle.CALL_TYPE_INCOMING || callType == Notification.CallStyle.CALL_TYPE_SCREENING) {
+                return false
+            }
+            if (callType == Notification.CallStyle.CALL_TYPE_ONGOING) {
+                return true
+            }
+        }
+
+        val hasHangupAction = actionTitles.any {
+            it.contains("hang up") || it.contains("hangup") || it.contains("end call") || it == "end" || it.contains("leave") || it.contains("disconnect")
+        }
+
+        val pkg = sbn.packageName.lowercase(java.util.Locale.ROOT)
+        val isDialerPkg = pkg.contains("dialer") || pkg.contains("incallui") || pkg.contains("telecom") || pkg.contains("phone") ||
+                pkg == "com.whatsapp" || pkg == "org.telegram.messenger" || pkg == "com.discord" || pkg == "com.viber.voip" || pkg == "com.facebook.orca"
+
+        val text = (extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: "").lowercase(java.util.Locale.ROOT)
+        val subText = (extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString() ?: "").lowercase(java.util.Locale.ROOT)
+        val isIncomingText = text.contains("incoming call") || subText.contains("incoming call") || text.contains("ringing")
+        if (isIncomingText) return false
+
+        val isOngoingCallText = text.contains("ongoing call") || text.contains("call in progress") || subText.contains("ongoing call")
+
+        return (isCallCategory && (hasHangupAction || isDialerPkg || isOngoingCallText)) || (isDialerPkg && hasHangupAction)
+    }
+
+    private fun handleOngoingCallNotification(sbn: StatusBarNotification) {
+        val isNewCall = systemCallKey != sbn.key || !IslandStateManager.activeCallState.value.isActive
+        systemCallKey = sbn.key
+        val notification = sbn.notification ?: return
+        val extras = notification.extras
+
+        val rawTitle = extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.takeIf { it.isNotBlank() }
+            ?: extras?.getCharSequence(Notification.EXTRA_TITLE_BIG)?.toString()?.takeIf { it.isNotBlank() }
+            ?: run {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    val person = extras?.getParcelable("android.callPerson") as? android.app.Person
+                    person?.name?.toString()?.takeIf { it.isNotBlank() }
+                } else null
+            }
+            ?: "Active Call"
+
+        activeEndCallAction = null
+        activeMuteOrSpeakerAction = null
+
+        val actions = notification.actions
+        actions?.forEach { action ->
+            val aTitle = (action?.title?.toString() ?: "").lowercase(java.util.Locale.ROOT)
+            if (aTitle.contains("hang up") || aTitle.contains("hangup") || aTitle.contains("end") || aTitle.contains("leave") || aTitle.contains("disconnect")) {
+                activeEndCallAction = action
+            } else if (aTitle.contains("mute") || aTitle.contains("unmute") || aTitle.contains("speaker") || aTitle.contains("audio")) {
+                if (activeMuteOrSpeakerAction == null || aTitle.contains("mute")) {
+                    activeMuteOrSpeakerAction = action
+                }
+            }
+        }
+        if (activeEndCallAction == null && !actions.isNullOrEmpty()) {
+            activeEndCallAction = actions.last()
+        }
+        if (activeMuteOrSpeakerAction == null && actions != null && actions.size >= 2) {
+            activeMuteOrSpeakerAction = actions.firstOrNull { it != activeEndCallAction }
+        }
+
+        val muteTitleLower = activeMuteOrSpeakerAction?.title?.toString()?.lowercase(java.util.Locale.ROOT) ?: ""
+        val isSpeakerButton = muteTitleLower.contains("speaker") || muteTitleLower.contains("audio")
+        val isCurrentlyMuted = muteTitleLower.contains("unmute")
+
+        IslandStateManager.onEndCall = {
+            try {
+                activeEndCallAction?.actionIntent?.send()
+            } catch (e: Exception) {
+                Log.e("NotificationReceiver", "Error sending end call intent", e)
+            }
+            callTimerJob?.cancel()
+            callTimerJob = null
+            systemCallKey = null
+            activeEndCallAction = null
+            activeMuteOrSpeakerAction = null
+            IslandStateManager.updateCallState(ActiveCallState(isActive = false))
+        }
+
+        IslandStateManager.onToggleCallMuteOrSpeaker = {
+            val current = IslandStateManager.activeCallState.value
+            var sent = false
+            val actionToInvoke = activeMuteOrSpeakerAction
+            if (actionToInvoke?.actionIntent != null) {
+                try {
+                    actionToInvoke.actionIntent.send()
+                    sent = true
+                } catch (e: Exception) {
+                    Log.e("NotificationReceiver", "Error sending call mute/speaker intent", e)
+                }
+            }
+            if (!sent) {
+                try {
+                    val am = getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+                    if (am != null) {
+                        am.isMicrophoneMute = !current.isMuted
+                    }
+                } catch (_: Exception) {}
+            }
+            IslandStateManager.updateCallState(current.copy(isMuted = !current.isMuted))
+        }
+
+        val chronometerBase = notification.`when`
+        if (isNewCall) {
+            callStartTimeMs = if (chronometerBase > 0L && chronometerBase <= System.currentTimeMillis()) {
+                chronometerBase
+            } else if (sbn.postTime > 0L && sbn.postTime <= System.currentTimeMillis()) {
+                sbn.postTime
+            } else {
+                System.currentTimeMillis()
+            }
+        } else if (chronometerBase > 0L && chronometerBase <= System.currentTimeMillis()) {
+            callStartTimeMs = chronometerBase
+        }
+
+        val elapsedSeconds = ((System.currentTimeMillis() - callStartTimeMs) / 1000).coerceAtLeast(0L)
+        val prevMuted = IslandStateManager.activeCallState.value.isMuted
+        IslandStateManager.updateCallState(
+            ActiveCallState(
+                isActive = true,
+                callerName = rawTitle,
+                packageName = sbn.packageName,
+                durationSeconds = elapsedSeconds,
+                isMuted = if (muteTitleLower.isNotBlank()) isCurrentlyMuted else prevMuted,
+                isSpeaker = isSpeakerButton,
+                contentIntent = notification.contentIntent
+            )
+        )
+
+        if (callTimerJob == null || callTimerJob?.isActive != true) {
+            callTimerJob = serviceScope.launch {
+                while (isActive) {
+                    delay(1000)
+                    val currentState = IslandStateManager.activeCallState.value
+                    if (currentState.isActive) {
+                        val elapsed = ((System.currentTimeMillis() - callStartTimeMs) / 1000).coerceAtLeast(0L)
+                        IslandStateManager.updateCallState(currentState.copy(durationSeconds = elapsed))
+                    }
+                }
+            }
+        }
+    }
+
     private fun isScreenRecordingSavedNotification(sbn: StatusBarNotification, notification: Notification): Boolean {
         val extras = notification.extras
         val title = (extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: "").lowercase()
@@ -721,7 +897,7 @@ class NotificationReceiverService : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         super.onNotificationPosted(sbn)
         if (sbn == null) return
-        if (!currentSettings.showNotifications && !currentSettings.showLiveProgress && !currentSettings.showScreenRecording) return
+        if (!currentSettings.showNotifications && !currentSettings.showLiveProgress && !currentSettings.showScreenRecording && !currentSettings.showCalls) return
 
         val packageName = sbn.packageName
         if (packageName == this.packageName) return // Ignore self
@@ -752,6 +928,22 @@ class NotificationReceiverService : NotificationListenerService() {
                 handleScreenRecordingNotification(sbn)
             }
             return
+        }
+
+        // 1B. Detect active ongoing phone call notifications
+        if (isOngoingCallNotification(sbn, notification)) {
+            if (currentSettings.showCalls) {
+                handleOngoingCallNotification(sbn)
+            }
+            return
+        } else if (systemCallKey == sbn.key) {
+            // Call notification transitioned out of ongoing state
+            systemCallKey = null
+            callTimerJob?.cancel()
+            callTimerJob = null
+            activeEndCallAction = null
+            activeMuteOrSpeakerAction = null
+            IslandStateManager.updateCallState(ActiveCallState(isActive = false))
         }
 
         // 2. Skip media notifications (Media controls are handled exclusively via MediaSessionManager with slider & controls)
@@ -862,6 +1054,14 @@ class NotificationReceiverService : NotificationListenerService() {
             activePauseAction = null
             activeResumeAction = null
             IslandStateManager.updateRecordingState(ScreenRecordingState(isRecording = false))
+        }
+        if (systemCallKey == sbn.key || (sbn.notification != null && isOngoingCallNotification(sbn, sbn.notification))) {
+            systemCallKey = null
+            callTimerJob?.cancel()
+            callTimerJob = null
+            activeEndCallAction = null
+            activeMuteOrSpeakerAction = null
+            IslandStateManager.updateCallState(ActiveCallState(isActive = false))
         }
         val notifObj = sbn.notification
         if (notifObj != null && (isMediaNotification(sbn, notifObj) || sbn.packageName == activeMediaController?.packageName)) {
