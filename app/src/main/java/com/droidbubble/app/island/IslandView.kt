@@ -878,11 +878,11 @@ fun IslandOverlayRoot(
     val ringerIslandWidth = (settings.widthDp * 0.95f).dp.coerceAtLeast(130.dp) + (teardropEarRadius * 2f)
 
     val bubbleSize = settings.heightDp.dp
-    val dualMainShiftLeft = if (!settings.isLeftCutout) (-3).dp else 0.dp
+    val dualMainShiftLeft = if (!settings.isLeftCutout) (-1).dp else 0.dp
     val compactMainFull = if (settings.isLeftCutout) {
         (settings.widthDp * 0.76f).dp.coerceIn(132.dp, 156.dp)
     } else {
-        98.dp
+        96.dp
     }
     val compactMainHalf = compactMainFull / 2f
 
@@ -997,7 +997,7 @@ fun IslandOverlayRoot(
         animationSpec = compactPillWidthAnimSpec,
         label = "dualMainShiftX"
     )
-    val bubbleGap = 6.dp
+    val bubbleGap = 5.dp
     val restingBubbleCenterX = if (settings.isLeftCutout) {
         compactMainFull + bubbleGap + (bubbleSize / 2f)
     } else {
@@ -3449,10 +3449,10 @@ fun CompactContent(
             trailingElement()
         }
     } else {
-        val leftWeight = if (isCompactDual) 0.83f else 1f
+        val leftWeight = 1f
         val rightWeight = 1f
         val startPadding = (if (isCompactDual) 5.5.dp else 8.dp) + teardropEarInset
-        val endPadding = (if (isCompactDual) 5.5.dp else 8.dp) + teardropEarInset
+        val endPadding = (if (isCompactDual) 7.5.dp else 8.dp) + teardropEarInset
         Row(
             modifier = Modifier
                 .fillMaxSize()
