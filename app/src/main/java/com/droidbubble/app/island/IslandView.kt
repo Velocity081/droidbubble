@@ -893,7 +893,6 @@ fun IslandOverlayRoot(
     val isFpsActive = isFps && primaryPriority == IslandPriority.FPS
     val isWeatherActive = isWeather && primaryPriority == IslandPriority.WEATHER
     val isNetworkSpeedActive = isNetworkSpeed && primaryPriority == IslandPriority.NETWORK_SPEED
-    val isMediaActive = isMedia && primaryPriority == IslandPriority.MEDIA
 
     val callIslandWidth = (75.dp + (settings.widthDp * 0.35f).dp).coerceIn(116.dp, 190.dp) + (teardropEarRadius * 2f)
     val recordingIslandWidth = (75.dp + (settings.widthDp * 0.35f).dp).coerceIn(116.dp, 190.dp) + (teardropEarRadius * 2f)
@@ -903,13 +902,11 @@ fun IslandOverlayRoot(
     val fpsIslandWidth = (75.dp + (settings.widthDp * 0.35f).dp).coerceIn(120.dp, 195.dp) + (teardropEarRadius * 2f)
     val weatherIslandWidth = (70.dp + (settings.widthDp * 0.35f).dp).coerceIn(102.dp, 185.dp) + (teardropEarRadius * 2f)
     val networkSpeedIslandWidth = (85.dp + (settings.widthDp * 0.35f).dp).coerceIn(132.dp, 205.dp) + (teardropEarRadius * 2f)
-    val mediaIslandWidth = (75.dp + (settings.widthDp * 0.35f).dp).coerceIn(104.dp, 190.dp) + (teardropEarRadius * 2f)
 
     val minDualCenter = when (primaryPriority) {
         IslandPriority.NETWORK_SPEED -> 114.dp
         IslandPriority.FPS -> 108.dp
         IslandPriority.CALL, IslandPriority.SCREEN_RECORDING -> 104.dp
-        IslandPriority.MEDIA -> 102.dp
         IslandPriority.WEATHER -> 98.dp
         else -> 96.dp
     }
@@ -917,7 +914,6 @@ fun IslandOverlayRoot(
         IslandPriority.NETWORK_SPEED -> 146.dp
         IslandPriority.FPS -> 140.dp
         IslandPriority.CALL, IslandPriority.SCREEN_RECORDING -> 138.dp
-        IslandPriority.MEDIA -> 136.dp
         IslandPriority.WEATHER -> 134.dp
         else -> 132.dp
     }
@@ -948,7 +944,6 @@ fun IslandOverlayRoot(
         isNetworkSpeedActive -> networkSpeedIslandWidth
         isFpsActive -> fpsIslandWidth
         isWeatherActive -> weatherIslandWidth
-        isMediaActive -> mediaIslandWidth
         isOccupied || hasPersistent -> settings.widthDp.dp.coerceAtLeast(80.dp) + (teardropEarRadius * 2f)
         else -> settings.widthDp.dp.coerceAtLeast(80.dp) + (teardropEarRadius * 2f)
     }
@@ -3376,8 +3371,8 @@ fun CompactContent(
                     CompactSpinningVinylCover(
                         bitmap = displayArt,
                         isPlaying = media?.isPlaying == true,
-                        size = 22.dp,
-                        modifier = if (isLeftCutout || isCompactDual) Modifier else Modifier.offset(x = (-4).dp)
+                        size = 20.dp,
+                        modifier = Modifier
                     )
                 } else if (displayArt != null) {
                     Image(
@@ -3574,7 +3569,11 @@ fun CompactContent(
         }
         val startPadding = (if (isCompactDual) 5.5.dp else 8.dp) + teardropEarInset
         val endPadding = (if (isCompactDual) 10.dp else 8.dp) + teardropEarInset
-        val centerSpacerWidth = if (isCompactDual) 20.dp else 24.dp
+        val centerSpacerWidth = when {
+            isCompactDual -> 20.dp
+            priority == IslandPriority.MEDIA -> 20.dp
+            else -> 24.dp
+        }
         Row(
             modifier = Modifier
                 .fillMaxSize()
