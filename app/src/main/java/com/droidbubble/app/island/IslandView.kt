@@ -482,6 +482,11 @@ fun IslandOverlayRoot(
     val view = LocalView.current
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    fun triggerHaptic() {
+        if (settings.hapticsEnabled) {
+            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        }
+    }
     var lastRingerMode by remember { mutableStateOf(RingerMode.RING) }
     LaunchedEffect(activeRingerMode) {
         if (activeRingerMode != null) {
@@ -519,7 +524,8 @@ fun IslandOverlayRoot(
     val isNotification = allowInOrientation && currentNotif != null && settings.showNotifications
     val isMedia = allowInOrientation && currentMedia != null && (!settings.dismissMediaOnPause || currentMedia.isPlaying) && (currentMedia.isPlaying || currentMedia.title.isNotBlank()) && settings.showMedia
     val isFlashlight = allowInOrientation && settings.showFlashlight && isFlashlightOn
-    val isCharging = allowInOrientation && (isTemporaryChargingActive || (isPersistentChargingActive && !isCall))
+    val isPersistentCharging = allowInOrientation && isPersistentChargingActive
+    val isCharging = allowInOrientation && isTemporaryChargingActive
     val isUnlock = allowInOrientation && isUnlocked && !isCharging
     val isBluetooth = allowInOrientation && settings.showBluetooth && isBluetoothConnected && !isCharging && !isUnlock
     val isRingerMode = allowInOrientation && settings.showRingerMode && activeRingerMode != null && !isCharging && !isUnlock && !isBluetooth
@@ -529,7 +535,7 @@ fun IslandOverlayRoot(
     val isNetworkSpeed = allowInOrientation && settings.showNetworkSpeed
     val hasPersistent = isFps || isWeather || isNetworkSpeed
 
-    val isOccupied = allowInOrientation && (isCall || isRecording || isNotification || isMedia || isProgress || isCharging || isUnlock || isBluetooth || isFlashlight || isRingerMode || hasPersistent)
+    val isOccupied = allowInOrientation && (isCall || isRecording || isNotification || isMedia || isProgress || isCharging || isPersistentCharging || isUnlock || isBluetooth || isFlashlight || isRingerMode || hasPersistent)
 
     // Unified priority list ordered dynamically by settings.featurePriorities (with persistent views at the bottom by default):
     val orderedActivePriorities = buildList {
@@ -541,6 +547,7 @@ fun IslandOverlayRoot(
                 "RECORDING" -> if (isRecording) add(IslandPriority.SCREEN_RECORDING)
                 "NOTIFICATION" -> if (isNotification) add(IslandPriority.POP_NOTIFICATION)
                 "FLASHLIGHT" -> if (isFlashlight) add(IslandPriority.FLASHLIGHT)
+                "PERSISTENT_CHARGING" -> if (isPersistentCharging) add(IslandPriority.CHARGING)
                 "FPS" -> if (isFps) add(IslandPriority.FPS)
                 "WEATHER" -> if (isWeather) add(IslandPriority.WEATHER)
                 "NETWORK_SPEED" -> if (isNetworkSpeed) add(IslandPriority.NETWORK_SPEED)
@@ -552,6 +559,7 @@ fun IslandOverlayRoot(
         if (isRecording && IslandPriority.SCREEN_RECORDING !in this) add(IslandPriority.SCREEN_RECORDING)
         if (isNotification && IslandPriority.POP_NOTIFICATION !in this) add(IslandPriority.POP_NOTIFICATION)
         if (isFlashlight && IslandPriority.FLASHLIGHT !in this) add(IslandPriority.FLASHLIGHT)
+        if (isPersistentCharging && IslandPriority.CHARGING !in this) add(IslandPriority.CHARGING)
         if (isFps && IslandPriority.FPS !in this) add(IslandPriority.FPS)
         if (isWeather && IslandPriority.WEATHER !in this) add(IslandPriority.WEATHER)
         if (isNetworkSpeed && IslandPriority.NETWORK_SPEED !in this) add(IslandPriority.NETWORK_SPEED)
@@ -569,6 +577,28 @@ fun IslandOverlayRoot(
         isPopIn && isNotification && primaryPriority != IslandPriority.POP_NOTIFICATION -> IslandPriority.POP_NOTIFICATION
         orderedActivePriorities.size >= 2 -> orderedActivePriorities[1]
         else -> null
+    }
+
+    var isSwappedCompactActivities by remember { mutableStateOf(false) }
+    val bubbleSwapScale = remember { Animatable(1f) }
+
+    LaunchedEffect(secondaryPriority) {
+        if (secondaryPriority == null) {
+            isSwappedCompactActivities = false
+        }
+    }
+
+    val compactPrimaryPriority = if (isCompactDual && isSwappedCompactActivities && secondaryPriority != null) secondaryPriority else primaryPriority
+    val compactSecondaryPriority = if (isCompactDual && isSwappedCompactActivities && secondaryPriority != null) primaryPriority else secondaryPriority
+
+    fun triggerSwapActivities() {
+        if (!isCompactDual || secondaryPriority == null) return
+        triggerHaptic()
+        coroutineScope.launch {
+            bubbleSwapScale.animateTo(0.12f, animationSpec = tween(110, easing = FastOutSlowInEasing))
+            isSwappedCompactActivities = !isSwappedCompactActivities
+            bubbleSwapScale.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+        }
     }
 
     val tertiaryPriority: IslandPriority? = when {
@@ -591,19 +621,21 @@ fun IslandOverlayRoot(
     // Card 1 (Main Island):
     val primaryOutlineColor = when {
         isCharging -> defaultTaskOutline
-        primaryPriority == IslandPriority.CALL -> greenCallOutline
-        primaryPriority == IslandPriority.SCREEN_RECORDING -> redRecordingOutline
-        primaryPriority == IslandPriority.MEDIA -> mediaOutline
-        primaryPriority == IslandPriority.FLASHLIGHT -> flashlightOutline
+        compactPrimaryPriority == IslandPriority.CALL -> greenCallOutline
+        compactPrimaryPriority == IslandPriority.SCREEN_RECORDING -> redRecordingOutline
+        compactPrimaryPriority == IslandPriority.MEDIA -> mediaOutline
+        compactPrimaryPriority == IslandPriority.FLASHLIGHT -> flashlightOutline
+        compactPrimaryPriority == IslandPriority.CHARGING -> defaultTaskOutline
         else -> defaultTaskOutline
     }
 
     // Card 2 / Auxiliary Bubble (Secondary Island):
     val secondaryOutlineColor = when {
-        secondaryPriority == IslandPriority.CALL -> greenCallOutline
-        secondaryPriority == IslandPriority.SCREEN_RECORDING -> redRecordingOutline
-        secondaryPriority == IslandPriority.MEDIA -> mediaOutline
-        secondaryPriority == IslandPriority.FLASHLIGHT -> flashlightOutline
+        compactSecondaryPriority == IslandPriority.CALL -> greenCallOutline
+        compactSecondaryPriority == IslandPriority.SCREEN_RECORDING -> redRecordingOutline
+        compactSecondaryPriority == IslandPriority.MEDIA -> mediaOutline
+        compactSecondaryPriority == IslandPriority.FLASHLIGHT -> flashlightOutline
+        compactSecondaryPriority == IslandPriority.CHARGING -> defaultTaskOutline
         else -> defaultTaskOutline
     }
 
@@ -907,16 +939,18 @@ fun IslandOverlayRoot(
     val weatherIslandWidth = (70.dp + (settings.widthDp * 0.35f).dp).coerceIn(102.dp, 185.dp) + (teardropEarRadius * 2f)
     val networkSpeedIslandWidth = (85.dp + (settings.widthDp * 0.35f).dp).coerceIn(132.dp, 205.dp) + (teardropEarRadius * 2f)
 
-    val minDualCenter = when (primaryPriority) {
+    val minDualCenter = when (compactPrimaryPriority) {
         IslandPriority.NETWORK_SPEED -> 114.dp
         IslandPriority.FPS -> 108.dp
+        IslandPriority.CHARGING -> 112.dp
         IslandPriority.CALL, IslandPriority.SCREEN_RECORDING -> 104.dp
         IslandPriority.WEATHER -> 98.dp
         else -> 96.dp
     }
-    val minDualLeft = when (primaryPriority) {
+    val minDualLeft = when (compactPrimaryPriority) {
         IslandPriority.NETWORK_SPEED -> 146.dp
         IslandPriority.FPS -> 140.dp
+        IslandPriority.CHARGING -> 138.dp
         IslandPriority.CALL, IslandPriority.SCREEN_RECORDING -> 138.dp
         IslandPriority.WEATHER -> 134.dp
         else -> 132.dp
@@ -939,7 +973,7 @@ fun IslandOverlayRoot(
     val targetCompactWidth = when {
         !isOccupied && !settings.alwaysShowPill && !hasPersistent -> 0.dp
         isExpanded -> 0.dp // Shrinks horizontally into 0 width while card expands!
-        isCharging -> chargingIslandWidth
+        isCharging || (!isCompactDual && primaryPriority == IslandPriority.CHARGING) -> chargingIslandWidth
         isRingerMode -> ringerIslandWidth
         isUnlock || isBluetooth -> unlockIslandWidth
         isCompactDual -> compactMainFull + (teardropEarRadius * 2f)
@@ -964,14 +998,15 @@ fun IslandOverlayRoot(
 
     val notifText = currentNotif?.text ?: ""
     val isLongNotif = notifText.length > 55 || notifText.contains('\n')
+    val notifExtraHeight = ((settings.notificationMaxLines - 2).coerceAtLeast(0) * 18).dp
     val notifBaseHeight = when {
-        isKeyboardFocused -> 188.dp
-        isLongNotif -> 168.dp
-        else -> 144.dp
+        isKeyboardFocused -> 188.dp + notifExtraHeight
+        isLongNotif -> 168.dp + notifExtraHeight
+        else -> 144.dp + notifExtraHeight
     }
 
     val targetCard1Height = when {
-        isExpanded && (primaryPriority == IslandPriority.SCREEN_RECORDING || primaryPriority == IslandPriority.CALL || primaryPriority == IslandPriority.FPS || primaryPriority == IslandPriority.WEATHER || primaryPriority == IslandPriority.NETWORK_SPEED) -> (78.dp * settings.expandedScale).coerceAtLeast(68.dp)
+        isExpanded && (primaryPriority == IslandPriority.SCREEN_RECORDING || primaryPriority == IslandPriority.CALL || primaryPriority == IslandPriority.FPS || primaryPriority == IslandPriority.WEATHER || primaryPriority == IslandPriority.NETWORK_SPEED || primaryPriority == IslandPriority.CHARGING) -> (78.dp * settings.expandedScale).coerceAtLeast(68.dp)
         isExpanded && primaryPriority == IslandPriority.PROGRESS -> (84.dp * settings.expandedScale).coerceAtLeast(74.dp)
         isExpanded && primaryPriority == IslandPriority.POP_NOTIFICATION -> (notifBaseHeight * settings.expandedScale).coerceAtLeast(136.dp)
         isExpanded && primaryPriority == IslandPriority.FLASHLIGHT -> (205.dp * settings.expandedScale).coerceAtLeast(165.dp)
@@ -1197,16 +1232,33 @@ fun IslandOverlayRoot(
         }
     }
 
-    fun triggerHaptic() {
-        if (settings.hapticsEnabled) {
-            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-        }
-    }
+
 
     // Completely idle and collapsed: nothing is visible on screen. Skip rendering the view hierarchy to preserve CPU & battery.
     if (!isOccupied && !settings.alwaysShowPill && animatedCompactWidth <= 0.1.dp && !isExpanded && expandProgress <= 0.001f) {
         return@CompositionLocalProvider
     }
+
+    val swipeToSwapModifier = if (!isExpanded && isCompactDual && settings.swapActivitiesOnSwipe) {
+        Modifier.pointerInput(Unit) {
+            var totalDragX = 0f
+            detectHorizontalDragGestures(
+                onDragStart = { totalDragX = 0f },
+                onDragEnd = {
+                    if (kotlin.math.abs(totalDragX) > 18f) {
+                        triggerSwapActivities()
+                    }
+                    totalDragX = 0f
+                },
+                onHorizontalDrag = { change, dragAmount ->
+                    totalDragX += dragAmount
+                    if (kotlin.math.abs(totalDragX) > 10f) {
+                        change.consume()
+                    }
+                }
+            )
+        }
+    } else Modifier
 
     val screenDensity = LocalDensity.current.density
     // Outer container: full touch bounds when expanded to capture outside tap, or exact bounds when minimised
@@ -1526,6 +1578,8 @@ fun IslandOverlayRoot(
                                         scale = settings.expandedScale,
                                         spinningAlbumArt = settings.spinningAlbumArt,
                                         wavyProgressBar = settings.wavyProgressBar,
+                                        notificationMaxLines = settings.notificationMaxLines,
+                                        charging = charging,
                                         onCollapse = {
                                             triggerHaptic()
                                             IslandStateManager.collapse()
@@ -1757,6 +1811,8 @@ fun IslandOverlayRoot(
                                         scale = settings.expandedScale,
                                         spinningAlbumArt = settings.spinningAlbumArt,
                                         wavyProgressBar = settings.wavyProgressBar,
+                                        notificationMaxLines = settings.notificationMaxLines,
+                                        charging = charging,
                                         onCollapse = {
                                             triggerHaptic()
                                             IslandStateManager.collapse()
@@ -1986,6 +2042,8 @@ fun IslandOverlayRoot(
                                         scale = settings.expandedScale,
                                         spinningAlbumArt = settings.spinningAlbumArt,
                                         wavyProgressBar = settings.wavyProgressBar,
+                                        notificationMaxLines = settings.notificationMaxLines,
+                                        charging = charging,
                                         onCollapse = {
                                             triggerHaptic()
                                             IslandStateManager.collapse()
@@ -2082,7 +2140,12 @@ fun IslandOverlayRoot(
                                     }
                                 }
                             }
-                            .graphicsLayer { alpha = bubbleAlpha }
+                            .graphicsLayer {
+                                alpha = bubbleAlpha
+                                scaleX = bubbleSwapScale.value
+                                scaleY = bubbleSwapScale.value
+                            }
+                            .then(swipeToSwapModifier)
                             .clip(CircleShape)
                             .background(Color.Black)
                             .then(
@@ -2126,7 +2189,7 @@ fun IslandOverlayRoot(
                                 contentAlignment = Alignment.Center
                             ) {
                                 AuxiliaryBubbleContent(
-                                    priority = secondaryPriority,
+                                    priority = compactSecondaryPriority,
                                     media = currentMedia,
                                     notification = if (secondaryPriority == IslandPriority.PROGRESS) currentProgress else currentNotif,
                                     recording = recording,
@@ -2192,6 +2255,7 @@ fun IslandOverlayRoot(
                             scaleX = idleBounceScale.value
                             scaleY = teardropScaleY
                         }
+                        .then(swipeToSwapModifier)
                         .clip(compactPillShape)
                         .background(if (animatedCompactWidth > 2.dp) Color.Black else Color.Transparent)
                         .then(
@@ -2726,9 +2790,9 @@ fun IslandOverlayRoot(
                             contentAlignment = Alignment.Center
                         ) {
                             CompactContent(
-                                priority = primaryPriority,
+                                priority = compactPrimaryPriority,
                                 media = currentMedia,
-                                notification = if (primaryPriority == IslandPriority.PROGRESS) currentProgress else currentNotif,
+                                notification = if (compactPrimaryPriority == IslandPriority.PROGRESS) currentProgress else currentNotif,
                                 recording = recording,
                                 activeCall = activeCall,
                                 isCompactDual = isCompactDual,
@@ -2741,7 +2805,8 @@ fun IslandOverlayRoot(
                                 fpsInfo = fpsInfo,
                                 weatherInfo = weatherInfo,
                                 networkSpeedInfo = networkSpeedInfo,
-                                secondaryPriority = secondaryPriority
+                                secondaryPriority = compactSecondaryPriority,
+                                charging = charging
                             )
                         }
                     }
@@ -3265,6 +3330,34 @@ fun AuxiliaryBubbleContent(
                 )
             }
         }
+        IslandPriority.CHARGING -> {
+            val mintChargingGreen = Color(0xFF7CE8A0)
+            Box(
+                modifier = Modifier.size(22.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .background(
+                            Brush.radialGradient(
+                                listOf(
+                                    mintChargingGreen.copy(alpha = 0.52f),
+                                    mintChargingGreen.copy(alpha = 0.20f),
+                                    Color.Transparent
+                                )
+                            ),
+                            shape = CircleShape
+                        )
+                )
+                Icon(
+                    imageVector = Icons.Default.Bolt,
+                    contentDescription = "Charging",
+                    tint = Color(0xFFB8FFD0),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
         else -> Unit
     }
 }
@@ -3286,10 +3379,28 @@ fun CompactContent(
     fpsInfo: FpsInfo = FpsInfo(),
     weatherInfo: WeatherInfo = WeatherInfo(),
     networkSpeedInfo: NetworkSpeedInfo = NetworkSpeedInfo(),
-    secondaryPriority: IslandPriority? = null
+    secondaryPriority: IslandPriority? = null,
+    charging: IslandStateManager.ChargingInfo? = null
 ) {
     val leadingElement = @Composable {
         when (priority) {
+            IslandPriority.CHARGING -> {
+                val wattage = charging?.wattage
+                val chargingLabel = if (wattage != null && wattage >= 0.5) {
+                    "${wattage.roundToInt().coerceAtLeast(1)}W"
+                } else {
+                    "Charging"
+                }
+                Text(
+                    text = chargingLabel,
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
             IslandPriority.CALL -> {
                 Icon(
                     imageVector = Icons.Default.Call,
@@ -3539,6 +3650,49 @@ fun CompactContent(
                 )
             }
 
+            IslandPriority.CHARGING -> {
+                val mintChargingGreen = Color(0xFF7CE8A0)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Text(
+                        text = "${charging?.percentage ?: 100}%",
+                        color = mintChargingGreen,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Box(
+                        modifier = Modifier.size(20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .background(
+                                    Brush.radialGradient(
+                                        listOf(
+                                            mintChargingGreen.copy(alpha = 0.52f),
+                                            mintChargingGreen.copy(alpha = 0.20f),
+                                            Color.Transparent
+                                        )
+                                    ),
+                                    shape = CircleShape
+                                )
+                        )
+                        Icon(
+                            imageVector = Icons.Default.Bolt,
+                            contentDescription = "Charging",
+                            tint = Color(0xFFB8FFD0),
+                            modifier = Modifier.size(15.dp)
+                        )
+                    }
+                }
+            }
+
             IslandPriority.IDLE -> Unit
         }
     }
@@ -3626,6 +3780,8 @@ fun ExpandedCardContent(
     scale: Float = 1.0f,
     spinningAlbumArt: Boolean = false,
     wavyProgressBar: Boolean = true,
+    notificationMaxLines: Int = 2,
+    charging: IslandStateManager.ChargingInfo? = null,
     onCollapse: () -> Unit
 ) {
     when (priority) {
@@ -3636,7 +3792,10 @@ fun ExpandedCardContent(
             ExpandedRecordingView(recording, onCollapse, scale)
         }
         IslandPriority.POP_NOTIFICATION -> {
-            ExpandedNotificationView(notification, onCollapse, scale)
+            ExpandedNotificationView(notification, onCollapse, scale, maxLines = notificationMaxLines)
+        }
+        IslandPriority.CHARGING -> {
+            ExpandedChargingView(charging, onCollapse, scale)
         }
         IslandPriority.PROGRESS -> {
             ExpandedProgressView(notification, onCollapse, scale)
@@ -4331,7 +4490,78 @@ fun ExpandedMediaView(
 }
 
 @Composable
-fun ExpandedNotificationView(notification: NotificationInfo?, onCollapse: () -> Unit, scale: Float = 1.0f) {
+fun ExpandedChargingView(charging: IslandStateManager.ChargingInfo?, onCollapse: () -> Unit, scale: Float = 1.0f) {
+    val mintChargingGreen = Color(0xFF7CE8A0)
+    val wattage = charging?.wattage
+    val chargingLabel = if (wattage != null && wattage >= 0.5) {
+        "${wattage.roundToInt().coerceAtLeast(1)}W Fast Charging"
+    } else {
+        "Connected to Power"
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = (18.dp * scale).coerceIn(12.dp, 22.dp)),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size((44.dp * scale).coerceIn(36.dp, 50.dp))
+                    .background(
+                        Brush.radialGradient(
+                            listOf(
+                                mintChargingGreen.copy(alpha = 0.40f),
+                                mintChargingGreen.copy(alpha = 0.12f),
+                                Color.Transparent
+                            )
+                        ),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Bolt,
+                    contentDescription = null,
+                    tint = Color(0xFFB8FFD0),
+                    modifier = Modifier.size((28.dp * scale).coerceIn(22.dp, 32.dp))
+                )
+            }
+            Column {
+                Text(
+                    text = "${charging?.percentage ?: 100}% Charged",
+                    color = Color.White,
+                    fontSize = (17 * scale).coerceIn(14f, 20f).sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = chargingLabel,
+                    color = mintChargingGreen,
+                    fontSize = (13 * scale).coerceIn(11f, 15f).sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+        BouncyIconButton(
+            onClick = onCollapse,
+            modifier = Modifier.size(28.dp)
+        ) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "Collapse",
+                tint = Color(0xFF8E8E93),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun ExpandedNotificationView(notification: NotificationInfo?, onCollapse: () -> Unit, scale: Float = 1.0f, maxLines: Int = 2) {
     val context = LocalContext.current
     var isReplying by remember { mutableStateOf(false) }
     var replyText by remember { mutableStateOf("") }
@@ -4383,7 +4613,7 @@ fun ExpandedNotificationView(notification: NotificationInfo?, onCollapse: () -> 
     val appNameSize = (13 * scale).coerceIn(11.5f, 15f).sp
     val bodySize = (15 * scale).coerceIn(13f, 17f).sp
     val bodyLineHeight = (20 * scale).coerceIn(17f, 22f).sp
-    val bodyMaxLines = if (scale < 0.88f) 2 else 3
+    val bodyMaxLines = maxLines
     val buttonHeight = (38.dp * scale).coerceIn(32.dp, 44.dp)
     val buttonFontSize = (13.5f * scale).coerceIn(12f, 15f).sp
 

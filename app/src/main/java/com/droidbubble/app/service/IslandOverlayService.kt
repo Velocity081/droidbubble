@@ -35,6 +35,7 @@ import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.Lifecycle
@@ -674,8 +675,12 @@ class IslandOverlayService : Service() {
             setContent {
                 val liveSettings by settingsRepository.settingsFlow.collectAsState(initial = currentSettings)
 
+                val activeFont = remember(liveSettings.fontKey) {
+                    com.droidbubble.app.theme.getIslandFontFamily(liveSettings.fontKey)
+                }
                 MaterialExpressiveTheme(
                     colorScheme = darkColorScheme(),
+                    typography = com.droidbubble.app.theme.createTypography(activeFont),
                     motionScheme = MotionScheme.expressive()
                 ) {
                     IslandOverlayRoot(

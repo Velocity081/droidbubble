@@ -114,6 +114,10 @@ import androidx.compose.material.icons.filled.VerticalAlignTop
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.FontDownload
+import androidx.compose.material3.RadioButton
+import com.droidbubble.app.theme.ISLAND_FONTS
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.AlertDialog
@@ -188,7 +192,7 @@ enum class MainScreenPage {
     MAIN,
     DIMENSIONS,
     APPEARANCE,
-    ACCESSIBILITY
+    GENERAL
 }
 
 
@@ -214,7 +218,7 @@ fun MainScreen(
 
     var showDimensionsPage by remember { mutableStateOf(false) }
     var showAppearancePage by remember { mutableStateOf(false) }
-    var showAccessibilityPage by remember { mutableStateOf(false) }
+    var showGeneralPage by remember { mutableStateOf(false) }
     var showFeedbackSheet by remember { mutableStateOf(false) }
     var feedbackType by remember { mutableStateOf(FeedbackType.BUG) }
     var feedbackTitle by remember { mutableStateOf("") }
@@ -251,7 +255,7 @@ fun MainScreen(
     val currentNavPage = when {
         showDimensionsPage -> MainScreenPage.DIMENSIONS
         showAppearancePage -> MainScreenPage.APPEARANCE
-        showAccessibilityPage -> MainScreenPage.ACCESSIBILITY
+        showGeneralPage -> MainScreenPage.GENERAL
         else -> MainScreenPage.MAIN
     }
 
@@ -301,11 +305,11 @@ fun MainScreen(
                     modifier = modifier
                 )
             }
-            MainScreenPage.ACCESSIBILITY -> {
-                AccessibilityPage(
+            MainScreenPage.GENERAL -> {
+                GeneralPage(
                     settings = settings,
                     onUpdateSettings = { viewModel.updateSettings(it) },
-                    onBack = { showAccessibilityPage = false },
+                    onBack = { showGeneralPage = false },
                     modifier = modifier
                 )
             }
@@ -583,15 +587,15 @@ fun MainScreen(
                     SettingsCardItem(position = GroupPosition.BOTTOM) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            modifier = Modifier.clickable { showAccessibilityPage = true },
-                            headlineContent = { Text("Accessibility", fontWeight = FontWeight.SemiBold) },
+                            modifier = Modifier.clickable { showGeneralPage = true },
+                            headlineContent = { Text("General", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
-                                Icon(Icons.Default.Accessibility, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Icon(Icons.Default.Tune, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             },
                             trailingContent = {
                                 Icon(
                                     Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                    contentDescription = "Open Accessibility",
+                                    contentDescription = "Open General",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -686,6 +690,7 @@ fun MainScreen(
                                 "FPS" -> settings.showFps
                                 "WEATHER" -> settings.showWeather
                                 "NETWORK_SPEED" -> settings.showNetworkSpeed
+                                "PERSISTENT_CHARGING" -> settings.persistentCharging
                                 else -> false
                             }
 
@@ -699,6 +704,7 @@ fun MainScreen(
                                 "FPS" -> "FPS Counter"
                                 "WEATHER" -> "Weather & Temperature"
                                 "NETWORK_SPEED" -> "Wi-Fi & Network Speed"
+                                "PERSISTENT_CHARGING" -> "Persistent Charging"
                                 else -> currentKey
                             }
 
@@ -712,6 +718,7 @@ fun MainScreen(
                                 "FPS" -> Icons.Default.Speed
                                 "WEATHER" -> Icons.Default.WbSunny
                                 "NETWORK_SPEED" -> Icons.Default.Wifi
+                                "PERSISTENT_CHARGING" -> Icons.Default.Bolt
                                 else -> Icons.Default.Apps
                             }
 
@@ -824,6 +831,7 @@ fun MainScreen(
                                                         "FPS" -> s.copy(showFps = checked)
                                                         "WEATHER" -> s.copy(showWeather = checked)
                                                         "NETWORK_SPEED" -> s.copy(showNetworkSpeed = checked)
+                                                        "PERSISTENT_CHARGING" -> s.copy(persistentCharging = checked)
                                                         else -> s
                                                     }
                                                 }
@@ -872,7 +880,6 @@ fun MainScreen(
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             headlineContent = { Text("Charging Indicator", fontWeight = FontWeight.SemiBold) },
-                            supportingContent = { Text("Temporary alert when charger is connected") },
                             leadingContent = {
                                 Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -881,25 +888,6 @@ fun MainScreen(
                                     checked = settings.showCharging,
                                     onCheckedChange = { show ->
                                         viewModel.updateSettings { it.copy(showCharging = show) }
-                                    }
-                                )
-                            }
-                        )
-                    }
-
-                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.persistentCharging) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Persistent Charging Indicator", fontWeight = FontWeight.SemiBold) },
-                            supportingContent = { Text("Keep charging indicator active while plugged in") },
-                            leadingContent = {
-                                Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.persistentCharging,
-                                    onCheckedChange = { show ->
-                                        viewModel.updateSettings { it.copy(persistentCharging = show) }
                                     }
                                 )
                             }
@@ -2213,6 +2201,63 @@ fun AppearancePage(
             }
 
             item {
+                SectionHeader(
+                    title = "Island Font",
+                    icon = Icons.Default.FontDownload
+                )
+            }
+
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    ISLAND_FONTS.forEachIndexed { index, fontOption ->
+                        val isSelected = (settings.fontKey == fontOption.key) || (settings.fontKey.isBlank() && fontOption.key == "DEFAULT")
+                        val itemPosition = when {
+                            ISLAND_FONTS.size == 1 -> GroupPosition.SINGLE
+                            index == 0 -> GroupPosition.TOP
+                            index == ISLAND_FONTS.size - 1 -> GroupPosition.BOTTOM
+                            else -> GroupPosition.MIDDLE
+                        }
+                        SettingsCardItem(
+                            position = itemPosition,
+                            isActive = isSelected
+                        ) {
+                            ListItem(
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                modifier = Modifier.clickable {
+                                    onUpdateSettings { it.copy(fontKey = fontOption.key) }
+                                },
+                                headlineContent = {
+                                    Text(
+                                        text = fontOption.name,
+                                        fontFamily = fontOption.family,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                },
+                                supportingContent = {
+                                    Text(
+                                        text = "The quick brown fox jumps over the lazy dog",
+                                        fontFamily = fontOption.family,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                },
+                                trailingContent = {
+                                    RadioButton(
+                                        selected = isSelected,
+                                        onClick = {
+                                            onUpdateSettings { it.copy(fontKey = fontOption.key) }
+                                        }
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
                 AnimationCurveEditor(settings = settings, onUpdateSettings = onUpdateSettings)
             }
         }
@@ -2222,19 +2267,58 @@ fun AppearancePage(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AccessibilityPage(
+fun GeneralPage(
     settings: IslandSettings,
     onUpdateSettings: ((IslandSettings) -> IslandSettings) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     BackHandler(onBack = onBack)
+    var showWeatherDialog by remember { mutableStateOf(false) }
+    var weatherCityInput by remember(settings.weatherCity) { mutableStateOf(settings.weatherCity) }
+
+    if (showWeatherDialog) {
+        AlertDialog(
+            onDismissRequest = { showWeatherDialog = false },
+            title = { Text("Weather Location") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Enter a city or location name to show weather for (e.g. London, Paris, New York, Thessaloniki). Leave blank for automatic time-zone approximation.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    OutlinedTextField(
+                        value = weatherCityInput,
+                        onValueChange = { weatherCityInput = it },
+                        label = { Text("City or Town") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onUpdateSettings { it.copy(weatherCity = weatherCityInput.trim()) }
+                        showWeatherDialog = false
+                    }
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showWeatherDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     Scaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("Accessibility", fontWeight = FontWeight.Bold) },
+                title = { Text("General", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -2293,6 +2377,65 @@ fun AccessibilityPage(
                                 }
                             )
                         }
+                    }
+
+                    SettingsCardItem(position = GroupPosition.MIDDLE) {
+                        SliderSettingItem(
+                            label = "Notification Max Lines",
+                            value = settings.notificationMaxLines.toFloat(),
+                            unit = "lines",
+                            valueRange = 1f..6f,
+                            steps = 4,
+                            onValueChange = { lines ->
+                                onUpdateSettings { it.copy(notificationMaxLines = lines.roundToInt().coerceIn(1, 6)) }
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.MIDDLE) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            modifier = Modifier.clickable {
+                                weatherCityInput = settings.weatherCity
+                                showWeatherDialog = true
+                            },
+                            headlineContent = {
+                                Text(
+                                    if (settings.weatherCity.isBlank()) "Weather Location" else "Weather Location (${settings.weatherCity})",
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            },
+                            leadingContent = {
+                                Icon(Icons.Default.WbSunny, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingContent = {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                    contentDescription = "Set Location",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.swapActivitiesOnSwipe) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Swipe to Swap Activities", fontWeight = FontWeight.SemiBold) },
+                            supportingContent = { Text("Swipe left/right on minimised island to swap main and secondary activities") },
+                            leadingContent = {
+                                Icon(Icons.Default.TouchApp, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.swapActivitiesOnSwipe,
+                                    onCheckedChange = { swapEnabled ->
+                                        onUpdateSettings { it.copy(swapActivitiesOnSwipe = swapEnabled) }
+                                    }
+                                )
+                            }
+                        )
                     }
 
                     SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.dismissMediaOnPause) {

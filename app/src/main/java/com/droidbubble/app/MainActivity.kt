@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.droidbubble.app.data.SettingsRepository
@@ -46,7 +49,11 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            DroidbubbleTheme {
+            val settings by viewModel.settings.collectAsState()
+            val fontFamily = remember(settings.fontKey) {
+                com.droidbubble.app.theme.getIslandFontFamily(settings.fontKey)
+            }
+            DroidbubbleTheme(fontFamily = fontFamily) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

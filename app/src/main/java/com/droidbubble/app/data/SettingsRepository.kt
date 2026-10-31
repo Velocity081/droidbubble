@@ -56,6 +56,10 @@ class SettingsRepository(private val context: Context) {
         val AUTO_DISMISS_NOTIFICATIONS = booleanPreferencesKey("auto_dismiss_notifications")
         val NOTIFICATION_AUTO_DISMISS_SECONDS = intPreferencesKey("notification_auto_dismiss_seconds")
         val PERSISTENT_CHARGING = booleanPreferencesKey("persistent_charging")
+        val NOTIFICATION_MAX_LINES = intPreferencesKey("notification_max_lines")
+        val WEATHER_CITY = stringPreferencesKey("weather_city")
+        val FONT_KEY = stringPreferencesKey("font_key")
+        val SWAP_ACTIVITIES_ON_SWIPE = booleanPreferencesKey("swap_activities_on_swipe")
         val BLURRED_ALBUM_ART_BACKGROUND = booleanPreferencesKey("blurred_album_art_background")
         val MEDIA_WAVE_ANIMATION = booleanPreferencesKey("media_wave_animation")
         val SPINNING_ALBUM_ART = booleanPreferencesKey("spinning_album_art")
@@ -116,6 +120,10 @@ class SettingsRepository(private val context: Context) {
             autoDismissNotifications = preferences[PreferencesKeys.AUTO_DISMISS_NOTIFICATIONS] ?: false,
             notificationAutoDismissSeconds = preferences[PreferencesKeys.NOTIFICATION_AUTO_DISMISS_SECONDS] ?: 3,
             persistentCharging = preferences[PreferencesKeys.PERSISTENT_CHARGING] ?: false,
+            notificationMaxLines = preferences[PreferencesKeys.NOTIFICATION_MAX_LINES] ?: 2,
+            weatherCity = preferences[PreferencesKeys.WEATHER_CITY] ?: "",
+            fontKey = preferences[PreferencesKeys.FONT_KEY] ?: "DEFAULT",
+            swapActivitiesOnSwipe = preferences[PreferencesKeys.SWAP_ACTIVITIES_ON_SWIPE] ?: true,
             blurredAlbumArtBackground = preferences[PreferencesKeys.BLURRED_ALBUM_ART_BACKGROUND] ?: false,
             mediaWaveAnimation = preferences[PreferencesKeys.MEDIA_WAVE_ANIMATION] ?: true,
             spinningAlbumArt = preferences[PreferencesKeys.SPINNING_ALBUM_ART] ?: false,
@@ -185,6 +193,10 @@ class SettingsRepository(private val context: Context) {
                 autoDismissNotifications = preferences[PreferencesKeys.AUTO_DISMISS_NOTIFICATIONS] ?: false,
                 notificationAutoDismissSeconds = preferences[PreferencesKeys.NOTIFICATION_AUTO_DISMISS_SECONDS] ?: 3,
                 persistentCharging = preferences[PreferencesKeys.PERSISTENT_CHARGING] ?: false,
+                notificationMaxLines = preferences[PreferencesKeys.NOTIFICATION_MAX_LINES] ?: 2,
+                weatherCity = preferences[PreferencesKeys.WEATHER_CITY] ?: "",
+                fontKey = preferences[PreferencesKeys.FONT_KEY] ?: "DEFAULT",
+                swapActivitiesOnSwipe = preferences[PreferencesKeys.SWAP_ACTIVITIES_ON_SWIPE] ?: true,
             blurredAlbumArtBackground = preferences[PreferencesKeys.BLURRED_ALBUM_ART_BACKGROUND] ?: false,
             mediaWaveAnimation = preferences[PreferencesKeys.MEDIA_WAVE_ANIMATION] ?: true,
             spinningAlbumArt = preferences[PreferencesKeys.SPINNING_ALBUM_ART] ?: false,
@@ -245,6 +257,10 @@ class SettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.AUTO_DISMISS_NOTIFICATIONS] = newSettings.autoDismissNotifications
             preferences[PreferencesKeys.NOTIFICATION_AUTO_DISMISS_SECONDS] = newSettings.notificationAutoDismissSeconds
             preferences[PreferencesKeys.PERSISTENT_CHARGING] = newSettings.persistentCharging
+            preferences[PreferencesKeys.NOTIFICATION_MAX_LINES] = newSettings.notificationMaxLines
+            preferences[PreferencesKeys.WEATHER_CITY] = newSettings.weatherCity
+            preferences[PreferencesKeys.FONT_KEY] = newSettings.fontKey
+            preferences[PreferencesKeys.SWAP_ACTIVITIES_ON_SWIPE] = newSettings.swapActivitiesOnSwipe
             preferences[PreferencesKeys.BLURRED_ALBUM_ART_BACKGROUND] = newSettings.blurredAlbumArtBackground
             preferences[PreferencesKeys.MEDIA_WAVE_ANIMATION] = newSettings.mediaWaveAnimation
             preferences[PreferencesKeys.SPINNING_ALBUM_ART] = newSettings.spinningAlbumArt

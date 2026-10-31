@@ -7,6 +7,7 @@ val DEFAULT_FEATURE_PRIORITIES = listOf(
     "RECORDING",
     "NOTIFICATION",
     "FLASHLIGHT",
+    "PERSISTENT_CHARGING",
     "FPS",
     "WEATHER",
     "NETWORK_SPEED"
@@ -49,6 +50,10 @@ data class IslandSettings(
     val autoDismissNotifications: Boolean = false,
     val notificationAutoDismissSeconds: Int = 3,
     val persistentCharging: Boolean = false,
+    val notificationMaxLines: Int = 2,
+    val weatherCity: String = "",
+    val fontKey: String = "DEFAULT",
+    val swapActivitiesOnSwipe: Boolean = true,
     val blurredAlbumArtBackground: Boolean = false,
     val mediaWaveAnimation: Boolean = true,
     val spinningAlbumArt: Boolean = false,

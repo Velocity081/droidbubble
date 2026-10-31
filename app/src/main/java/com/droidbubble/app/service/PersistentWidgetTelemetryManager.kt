@@ -38,6 +38,7 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var networkJob: Job? = null
     private var weatherJob: Job? = null
+    private var customCity: String = ""
     private var isFpsRunning = false
 
     private var prevRxBytes = -1L
@@ -138,9 +139,15 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
             networkJob = null
         }
 
+        val oldCity = customCity
+        customCity = settings.weatherCity
         if (settings.showWeather) {
             if (weatherJob == null) {
                 startWeatherMonitoring()
+            } else if (customCity != oldCity) {
+                scope.launch(Dispatchers.IO) {
+                    fetchWeather()
+                }
             }
         } else {
             weatherJob?.cancel()
@@ -254,10 +261,48 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
         }
     }
 
+    private suspend fun resolveCityCoordinates(cityName: String): Triple<Double, Double, String> {
+        return try {
+            val encoded = java.net.URLEncoder.encode(cityName.trim(), "UTF-8")
+            val url = URL("https://geocoding-api.open-meteo.com/v1/search?name=$encoded&count=1&language=en&format=json")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.connectTimeout = 5000
+            conn.readTimeout = 5000
+            conn.requestMethod = "GET"
+            if (conn.responseCode == 200) {
+                val text = conn.inputStream.bufferedReader().use { it.readText() }
+                val json = JSONObject(text)
+                val results = json.optJSONArray("results")
+                if (results != null && results.length() > 0) {
+                    val first = results.getJSONObject(0)
+                    val lat = first.getDouble("latitude")
+                    val lon = first.getDouble("longitude")
+                    val name = first.getString("name")
+                    val country = first.optString("country_code", "")
+                    val displayName = if (country.isNotBlank()) "$name, ${country.uppercase(Locale.ROOT)}" else name
+                    Triple(lat, lon, displayName)
+                } else {
+                    val tz = TimeZone.getDefault().id
+                    approximateCoordsForTimeZone(tz)
+                }
+            } else {
+                val tz = TimeZone.getDefault().id
+                approximateCoordsForTimeZone(tz)
+            }
+        } catch (_: Exception) {
+            val tz = TimeZone.getDefault().id
+            approximateCoordsForTimeZone(tz)
+        }
+    }
+
     private suspend fun fetchWeather() {
         try {
-            val tz = TimeZone.getDefault().id
-            val (lat, lon, defaultCity) = approximateCoordsForTimeZone(tz)
+            val (lat, lon, defaultCity) = if (customCity.isNotBlank()) {
+                resolveCityCoordinates(customCity)
+            } else {
+                val tz = TimeZone.getDefault().id
+                approximateCoordsForTimeZone(tz)
+            }
 
             val urlString = "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min&timezone=auto"
             val url = URL(urlString)
@@ -316,8 +361,12 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
     }
 
     private suspend fun useFallbackWeather() {
-        val tz = TimeZone.getDefault().id
-        val (_, _, defaultCity) = approximateCoordsForTimeZone(tz)
+        val (_, _, defaultCity) = if (customCity.isNotBlank()) {
+            Triple(0.0, 0.0, customCity)
+        } else {
+            val tz = TimeZone.getDefault().id
+            approximateCoordsForTimeZone(tz)
+        }
         withContext(Dispatchers.Main) {
             IslandStateManager.updateWeather(
                 WeatherInfo(
