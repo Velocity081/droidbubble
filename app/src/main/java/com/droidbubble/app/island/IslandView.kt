@@ -554,6 +554,7 @@ fun IslandOverlayRoot(
     val activeCount = orderedActivePriorities.size
     val isDual = !isCharging && !isUnlock && !isBluetooth && !isRingerMode && activeCount >= 2
     val isTriple = !isCharging && !isUnlock && !isBluetooth && !isRingerMode && activeCount >= 3
+    val isCompactDual = isDual && settings.showDualActivityInCompact
 
     val primaryPriority: IslandPriority = orderedActivePriorities.firstOrNull() ?: IslandPriority.IDLE
 
@@ -879,22 +880,24 @@ fun IslandOverlayRoot(
     val teardropEarRadius = if (settings.isTeardropCutout) 11.dp else 0.dp
     var mainPillRect by remember { mutableStateOf<android.graphics.Rect?>(null) }
     var auxBubbleRect by remember { mutableStateOf<android.graphics.Rect?>(null) }
-    LaunchedEffect(isDual) {
-        if (!isDual && auxBubbleRect != null) {
+    LaunchedEffect(isCompactDual) {
+        if (!isCompactDual && auxBubbleRect != null) {
             auxBubbleRect = null
             onCompactRectsChange(listOfNotNull(mainPillRect))
         }
     }
-    val chargingIslandWidth = (settings.widthDp + 20).dp.coerceAtLeast(140.dp) + (teardropEarRadius * 2f)
-    val unlockIslandWidth = (settings.widthDp * 0.82f).dp.coerceAtLeast(108.dp) + (teardropEarRadius * 2f)
-    val ringerIslandWidth = (settings.widthDp * 0.95f).dp.coerceAtLeast(130.dp) + (teardropEarRadius * 2f)
+    val chargingIslandWidth = (settings.widthDp + 20).dp.coerceAtLeast(110.dp) + (teardropEarRadius * 2f)
+    val unlockIslandWidth = (settings.widthDp * 0.82f).dp.coerceAtLeast(96.dp) + (teardropEarRadius * 2f)
+    val ringerIslandWidth = (settings.widthDp * 0.95f).dp.coerceAtLeast(110.dp) + (teardropEarRadius * 2f)
 
     val bubbleSize = settings.heightDp.dp
     val dualMainShiftLeft = if (!settings.isLeftCutout) (-1).dp else 0.dp
+    // Dual activity compact main pill width: clamped at a safe squash floor (94dp center, 132dp left)
+    // so indicators never get squashed. Below that floor, reducing widthDp only affects single activity!
     val compactMainFull = if (settings.isLeftCutout) {
         (settings.widthDp * 0.76f).dp.coerceIn(132.dp, 156.dp)
     } else {
-        96.dp
+        (settings.widthDp * 0.53f).dp.coerceIn(94.dp, 110.dp)
     }
     val compactMainHalf = compactMainFull / 2f
 
@@ -907,9 +910,9 @@ fun IslandOverlayRoot(
         isCharging -> chargingIslandWidth
         isRingerMode -> ringerIslandWidth
         isUnlock || isBluetooth -> unlockIslandWidth
-        isDual -> compactMainFull + (teardropEarRadius * 2f)
-        isOccupied || hasPersistent -> settings.widthDp.dp.coerceAtLeast(124.dp) + (teardropEarRadius * 2f)
-        else -> settings.widthDp.dp + (teardropEarRadius * 2f)
+        isCompactDual -> compactMainFull + (teardropEarRadius * 2f)
+        isOccupied || hasPersistent -> settings.widthDp.dp.coerceAtLeast(80.dp) + (teardropEarRadius * 2f)
+        else -> settings.widthDp.dp.coerceAtLeast(80.dp) + (teardropEarRadius * 2f)
     }
 
     // Expanded Cards: Card 1 (and Card 2 if dual mode).
@@ -999,7 +1002,7 @@ fun IslandOverlayRoot(
     val targetCard3Alpha = if (card3Expanded && showTertiaryCard) 1f else 0f
     val targetCard3OffsetY = if (card3Expanded && showTertiaryCard) 0.dp else (-14).dp
 
-    val targetDualMainShiftX = if (!isCharging && !isUnlock && !isBluetooth && !isRingerMode && isDual && !isExpanded && !settings.isLeftCutout) {
+    val targetDualMainShiftX = if (!isCharging && !isUnlock && !isBluetooth && !isRingerMode && isCompactDual && !isExpanded && !settings.isLeftCutout) {
         -dualMainShiftLeft
     } else {
         0.dp
@@ -1016,7 +1019,7 @@ fun IslandOverlayRoot(
         (compactMainHalf - dualMainShiftLeft) + bubbleGap + (bubbleSize / 2f)
     }
 
-    val shouldEmergeSecondary = !isCharging && !isUnlock && !isBluetooth && !isRingerMode && isDual && !isExpanded && (isOccupied || hasPersistent)
+    val shouldEmergeSecondary = !isCharging && !isUnlock && !isBluetooth && !isRingerMode && isCompactDual && !isExpanded && (isOccupied || hasPersistent)
     var secondaryBubbleEmerged by remember { mutableStateOf(false) }
     LaunchedEffect(shouldEmergeSecondary) {
         if (shouldEmergeSecondary) {
@@ -1995,7 +1998,7 @@ fun IslandOverlayRoot(
 
             // 1. Auxiliary Circular Island Bubble: Placed on the LAYER BELOW (rendered first so main pill covers it!)
             // Fixed circular shape & size; emerges and retracts purely along the X axis from the punch hole
-            if (isDual || animatedBubbleOffsetX > 1.dp) {
+            if (isCompactDual || animatedBubbleOffsetX > 1.dp) {
                 val bubbleCenterRelativeToAnchor = if (settings.isLeftCutout) {
                     animatedBubbleOffsetX - (bubbleSize / 2f)
                 } else {
@@ -2139,7 +2142,7 @@ fun IslandOverlayRoot(
                                 )
                                 if (mainPillRect != r) {
                                     mainPillRect = r
-                                    onCompactRectsChange(listOfNotNull(r, if (isDual) auxBubbleRect else null))
+                                    onCompactRectsChange(listOfNotNull(r, if (isCompactDual) auxBubbleRect else null))
                                 }
                             }
                         }
@@ -2691,7 +2694,7 @@ fun IslandOverlayRoot(
                                 notification = if (primaryPriority == IslandPriority.PROGRESS) currentProgress else currentNotif,
                                 recording = recording,
                                 activeCall = activeCall,
-                                isCompactDual = isDual,
+                                isCompactDual = isCompactDual,
                                 isLeftCutout = settings.isLeftCutout,
                                 isTeardropCutout = settings.isTeardropCutout,
                                 teardropEarInset = teardropEarRadius,

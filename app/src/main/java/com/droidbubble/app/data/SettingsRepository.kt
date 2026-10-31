@@ -49,6 +49,7 @@ class SettingsRepository(private val context: Context) {
         val BUBBLE_EFFECT_ENABLED = booleanPreferencesKey("bubble_effect_enabled")
         val DISMISS_MEDIA_ON_PAUSE = booleanPreferencesKey("dismiss_media_on_pause")
         val ALWAYS_SHOW_PILL = booleanPreferencesKey("always_show_pill")
+        val SHOW_DUAL_ACTIVITY_IN_COMPACT = booleanPreferencesKey("show_dual_activity_in_compact")
         val SHOW_FPS = booleanPreferencesKey("show_fps")
         val SHOW_WEATHER = booleanPreferencesKey("show_weather")
         val SHOW_NETWORK_SPEED = booleanPreferencesKey("show_network_speed")
@@ -106,6 +107,7 @@ class SettingsRepository(private val context: Context) {
             bubbleEffectEnabled = preferences[PreferencesKeys.BUBBLE_EFFECT_ENABLED] ?: true,
             dismissMediaOnPause = preferences[PreferencesKeys.DISMISS_MEDIA_ON_PAUSE] ?: false,
             alwaysShowPill = preferences[PreferencesKeys.ALWAYS_SHOW_PILL] ?: false,
+            showDualActivityInCompact = preferences[PreferencesKeys.SHOW_DUAL_ACTIVITY_IN_COMPACT] ?: true,
             showFps = preferences[PreferencesKeys.SHOW_FPS] ?: false,
             showWeather = preferences[PreferencesKeys.SHOW_WEATHER] ?: false,
             showNetworkSpeed = preferences[PreferencesKeys.SHOW_NETWORK_SPEED] ?: false,
@@ -229,6 +231,7 @@ class SettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.BUBBLE_EFFECT_ENABLED] = newSettings.bubbleEffectEnabled
             preferences[PreferencesKeys.DISMISS_MEDIA_ON_PAUSE] = newSettings.dismissMediaOnPause
             preferences[PreferencesKeys.ALWAYS_SHOW_PILL] = newSettings.alwaysShowPill
+            preferences[PreferencesKeys.SHOW_DUAL_ACTIVITY_IN_COMPACT] = newSettings.showDualActivityInCompact
             preferences[PreferencesKeys.SHOW_FPS] = newSettings.showFps
             preferences[PreferencesKeys.SHOW_WEATHER] = newSettings.showWeather
             preferences[PreferencesKeys.SHOW_NETWORK_SPEED] = newSettings.showNetworkSpeed

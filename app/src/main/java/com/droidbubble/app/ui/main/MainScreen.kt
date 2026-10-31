@@ -2031,6 +2031,25 @@ fun AppearancePage(
                         )
                     }
 
+                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.showDualActivityInCompact) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Dual Activity on Minimised Island", fontWeight = FontWeight.SemiBold) },
+                            supportingContent = { Text("Shows secondary bubble; when off, shows only priority activity until expanded", style = MaterialTheme.typography.bodySmall) },
+                            leadingContent = {
+                                Icon(Icons.Default.Widgets, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.showDualActivityInCompact,
+                                    onCheckedChange = { showDual ->
+                                        onUpdateSettings { it.copy(showDualActivityInCompact = showDual) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+
                     SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.alwaysShowPill) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),

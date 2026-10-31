@@ -584,10 +584,10 @@ class IslandOverlayService : Service() {
         val hasPersistentWidgets = (currentSettings.showFps || currentSettings.showWeather || currentSettings.showNetworkSpeed) && allowedInOrientation
         val shouldShowCompact = (isOccupied || currentSettings.alwaysShowPill || hasPersistentWidgets) && allowedInOrientation
 
-        val mainHalf = (currentSettings.widthDp * 0.90f).coerceAtLeast(124f) / 2f
+        val mainHalf = (currentSettings.widthDp * 0.90f).coerceAtLeast(80f) / 2f
         val dualRightEdge = mainHalf + 8f + currentSettings.heightDp + 44f
-        val chargingEdge = ((currentSettings.widthDp + 20f).coerceAtLeast(140f) + 80f) / 2f
-        val totalWidthDp = (maxOf(dualRightEdge, chargingEdge) * 2f).coerceAtLeast(currentSettings.widthDp + 100f)
+        val chargingEdge = ((currentSettings.widthDp + 20f).coerceAtLeast(110f) + 80f) / 2f
+        val totalWidthDp = (maxOf(dualRightEdge, chargingEdge) * 2f).coerceAtLeast(currentSettings.widthDp + 60f)
 
         val initialWidth = if (shouldShowCompact) {
             if (currentSettings.isLeftCutout) {
@@ -829,10 +829,10 @@ class IslandOverlayService : Service() {
 
             // Use a unified compact window width across all compact states (single, dual, charging, unlock, ringer)
             // so WindowManager never resizes params.width mid-animation, completely eliminating horizontal teleporting!
-            val mainHalf = (currentSettings.widthDp * 0.90f).coerceAtLeast(124f) / 2f
+            val mainHalf = (currentSettings.widthDp * 0.90f).coerceAtLeast(80f) / 2f
             val dualRightEdge = mainHalf + 8f + currentSettings.heightDp + 44f
-            val chargingEdge = ((currentSettings.widthDp + 20f).coerceAtLeast(140f) + 80f) / 2f
-            val totalWidthDp = (maxOf(dualRightEdge, chargingEdge) * 2f).coerceAtLeast(currentSettings.widthDp + 100f)
+            val chargingEdge = ((currentSettings.widthDp + 20f).coerceAtLeast(110f) + 80f) / 2f
+            val totalWidthDp = (maxOf(dualRightEdge, chargingEdge) * 2f).coerceAtLeast(currentSettings.widthDp + 60f)
 
             fun applyCompactBounds() {
                 collapseJob?.cancel()

@@ -42,6 +42,7 @@ data class IslandSettings(
     val bubbleEffectEnabled: Boolean = true,
     val dismissMediaOnPause: Boolean = false,
     val alwaysShowPill: Boolean = false,
+    val showDualActivityInCompact: Boolean = true,
     val showFps: Boolean = false,
     val showWeather: Boolean = false,
     val showNetworkSpeed: Boolean = false,
