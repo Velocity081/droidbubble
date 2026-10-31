@@ -28,6 +28,9 @@ class PowerConnectionReceiver : BroadcastReceiver() {
             }
             val wattage = BatteryUtils.getChargingWattage(ctx, batteryIntent)
             IslandStateManager.triggerChargingEvent(pct, wattage)
+            IslandStateManager.updatePersistentCharging(true, pct, wattage)
+        } else if (action == Intent.ACTION_POWER_DISCONNECTED) {
+            IslandStateManager.updatePersistentCharging(false, 0, null)
         }
     }
 }

@@ -33,6 +33,12 @@ object IslandStateManager {
     private val _activeCharging = MutableStateFlow<ChargingInfo?>(null)
     val activeCharging: StateFlow<ChargingInfo?> = _activeCharging.asStateFlow()
 
+    private val _persistentCharging = MutableStateFlow<ChargingInfo?>(null)
+    val persistentCharging: StateFlow<ChargingInfo?> = _persistentCharging.asStateFlow()
+
+    val isPersistentChargingActive: Boolean
+        get() = _persistentCharging.value != null
+
     private val _isUnlocked = MutableStateFlow(false)
     val isUnlocked: StateFlow<Boolean> = _isUnlocked.asStateFlow()
     private var unlockJob: Job? = null
@@ -177,6 +183,7 @@ object IslandStateManager {
 
     var dismissMediaOnPause: Boolean = false
     var autoDismissNotifications: Boolean = false
+    var autoDismissNotificationSeconds: Int = 3
     private var autoDismissNotificationJob: Job? = null
 
     val isMediaActive: Boolean
@@ -295,8 +302,23 @@ object IslandStateManager {
     }
 
     fun updateChargingWattage(wattage: Double?) {
-        val current = _activeCharging.value ?: return
-        _activeCharging.value = current.copy(wattage = wattage)
+        val current = _activeCharging.value
+        if (current != null) {
+            _activeCharging.value = current.copy(wattage = wattage)
+        }
+        val currentPersistent = _persistentCharging.value
+        if (currentPersistent != null) {
+            _persistentCharging.value = currentPersistent.copy(wattage = wattage)
+        }
+    }
+
+    fun updatePersistentCharging(isCharging: Boolean, percentage: Int, wattage: Double? = null) {
+        if (isCharging) {
+            val currentWattage = wattage ?: _persistentCharging.value?.wattage
+            _persistentCharging.value = ChargingInfo(percentage.coerceIn(0, 100), currentWattage)
+        } else {
+            _persistentCharging.value = null
+        }
     }
 
     fun updateMedia(media: MediaInfo?) {
@@ -366,7 +388,7 @@ object IslandStateManager {
             if (autoDismissNotifications) {
                 val notifKey = notification.key
                 autoDismissNotificationJob = scope.launch {
-                    delay(3000)
+                    delay(autoDismissNotificationSeconds * 1000L)
                     if (_activeNotification.value?.key == notifKey && (!_isExpanded.value || _expandedPriority.value != IslandPriority.POP_NOTIFICATION)) {
                         dismissCurrentNotification()
                     }

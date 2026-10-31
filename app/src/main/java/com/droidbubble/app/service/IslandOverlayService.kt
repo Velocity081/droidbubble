@@ -299,7 +299,6 @@ class IslandOverlayService : Service() {
                 }
             }
             if (action == Intent.ACTION_POWER_CONNECTED || action == "android.os.action.CHARGING") {
-                if (!currentSettings.showCharging) return
                 val ctx = context ?: return
                 val batteryIntent = ctx.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
                 val level = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
@@ -310,20 +309,42 @@ class IslandOverlayService : Service() {
                     100
                 }
                 val wattage = BatteryUtils.getChargingWattage(ctx, batteryIntent)
-                IslandStateManager.triggerChargingEvent(pct, wattage)
+                if (currentSettings.showCharging) {
+                    IslandStateManager.triggerChargingEvent(pct, wattage)
+                }
+                IslandStateManager.updatePersistentCharging(true, pct, wattage)
 
                 // Poll charging wattage at 400ms, 1000ms, 1700ms, and 2400ms so fast-charging negotiation updates live
                 serviceScope.launch {
                     val sampleDelays = longArrayOf(400L, 600L, 700L, 700L)
                     for (waitMs in sampleDelays) {
                         delay(waitMs)
-                        if (!IslandStateManager.isChargingActive) break
+                        if (!IslandStateManager.isChargingActive && !IslandStateManager.isPersistentChargingActive) break
                         val updated = BatteryUtils.getChargingWattage(this@IslandOverlayService)
                         if (updated != null && updated > 0.0) {
                             IslandStateManager.updateChargingWattage(updated)
                         }
                     }
                 }
+                return
+            }
+            if (action == Intent.ACTION_POWER_DISCONNECTED) {
+                IslandStateManager.updatePersistentCharging(false, 0, null)
+                return
+            }
+            if (action == Intent.ACTION_BATTERY_CHANGED) {
+                val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+                val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+                val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+                val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+                val pct = if (level >= 0 && scale > 0) {
+                    ((level.toFloat() / scale.toFloat()) * 100).roundToInt().coerceIn(0, 100)
+                } else {
+                    100
+                }
+                val wattage = BatteryUtils.getChargingWattage(this@IslandOverlayService, intent)
+                IslandStateManager.updatePersistentCharging(isCharging, pct, wattage)
+                return
             }
         }
     }
@@ -430,6 +451,19 @@ class IslandOverlayService : Service() {
         }
         IslandStateManager.dismissMediaOnPause = currentSettings.dismissMediaOnPause
         IslandStateManager.autoDismissNotifications = currentSettings.autoDismissNotifications
+        IslandStateManager.autoDismissNotificationSeconds = currentSettings.notificationAutoDismissSeconds
+        val initialBattery = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val initialStatus = initialBattery?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        val initialCharging = initialStatus == BatteryManager.BATTERY_STATUS_CHARGING || initialStatus == BatteryManager.BATTERY_STATUS_FULL
+        if (initialCharging) {
+            val level = initialBattery?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+            val scale = initialBattery?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+            val pct = if (level >= 0 && scale > 0) {
+                ((level.toFloat() / scale.toFloat()) * 100).roundToInt().coerceIn(0, 100)
+            } else 100
+            val wattage = BatteryUtils.getChargingWattage(this, initialBattery)
+            IslandStateManager.updatePersistentCharging(true, pct, wattage)
+        }
         val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
         if (km != null) {
             IslandStateManager.setDeviceLocked(km.isKeyguardLocked)
@@ -468,6 +502,8 @@ class IslandOverlayService : Service() {
 
         val powerFilter = IntentFilter().apply {
             addAction(Intent.ACTION_POWER_CONNECTED)
+            addAction(Intent.ACTION_POWER_DISCONNECTED)
+            addAction(Intent.ACTION_BATTERY_CHANGED)
             addAction("android.os.action.CHARGING")
             addAction(Intent.ACTION_USER_PRESENT)
             addAction(Intent.ACTION_SCREEN_ON)
@@ -685,7 +721,10 @@ class IslandOverlayService : Service() {
                     IslandStateManager.activeCallState
                 ) { _, _, _, _, _ -> Unit },
                 kotlinx.coroutines.flow.combine(
-                    IslandStateManager.activeCharging,
+                    kotlinx.coroutines.flow.combine(
+                        IslandStateManager.activeCharging,
+                        IslandStateManager.persistentCharging
+                    ) { _, _ -> Unit },
                     IslandStateManager.isUnlocked,
                     IslandStateManager.isBluetoothConnected,
                     IslandStateManager.activeRingerMode,
@@ -719,6 +758,7 @@ class IslandOverlayService : Service() {
                 persistentTelemetryManager?.updateSettings(settings)
                 IslandStateManager.dismissMediaOnPause = settings.dismissMediaOnPause
                 IslandStateManager.autoDismissNotifications = settings.autoDismissNotifications
+                IslandStateManager.autoDismissNotificationSeconds = settings.notificationAutoDismissSeconds
                 if (!settings.isEnabled) {
                     removeOverlay()
                 } else if (composeView == null) {
@@ -809,7 +849,9 @@ class IslandOverlayService : Service() {
                 flags = params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
             )
         } else {
-            val isCharging = currentSettings.showCharging && IslandStateManager.isChargingActive
+            val isTemporaryCharging = currentSettings.showCharging && IslandStateManager.isChargingActive
+            val isPersistentCharging = currentSettings.persistentCharging && IslandStateManager.isPersistentChargingActive
+            val isCharging = isTemporaryCharging || isPersistentCharging
             val isUnlock = IslandStateManager.isUnlockActive
             val isBluetooth = currentSettings.showBluetooth && IslandStateManager.isBluetoothActive
             val isRingerMode = currentSettings.showRingerMode && IslandStateManager.isRingerModeActive

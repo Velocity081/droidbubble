@@ -47,6 +47,8 @@ data class IslandSettings(
     val showWeather: Boolean = false,
     val showNetworkSpeed: Boolean = false,
     val autoDismissNotifications: Boolean = false,
+    val notificationAutoDismissSeconds: Int = 3,
+    val persistentCharging: Boolean = false,
     val blurredAlbumArtBackground: Boolean = false,
     val mediaWaveAnimation: Boolean = true,
     val spinningAlbumArt: Boolean = false,

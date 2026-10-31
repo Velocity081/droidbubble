@@ -872,6 +872,7 @@ fun MainScreen(
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             headlineContent = { Text("Charging Indicator", fontWeight = FontWeight.SemiBold) },
+                            supportingContent = { Text("Temporary alert when charger is connected") },
                             leadingContent = {
                                 Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -880,6 +881,25 @@ fun MainScreen(
                                     checked = settings.showCharging,
                                     onCheckedChange = { show ->
                                         viewModel.updateSettings { it.copy(showCharging = show) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.persistentCharging) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Persistent Charging Indicator", fontWeight = FontWeight.SemiBold) },
+                            supportingContent = { Text("Keep charging indicator active while plugged in") },
+                            leadingContent = {
+                                Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.persistentCharging,
+                                    onCheckedChange = { show ->
+                                        viewModel.updateSettings { it.copy(persistentCharging = show) }
                                     }
                                 )
                             }
@@ -2245,7 +2265,7 @@ fun AccessibilityPage(
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             headlineContent = { Text("Auto-Dismiss Notifications", fontWeight = FontWeight.SemiBold) },
-                            supportingContent = { Text("Dismiss notification cards automatically after 3 seconds") },
+                            supportingContent = { Text("Dismiss notification cards automatically after ${settings.notificationAutoDismissSeconds} seconds") },
                             leadingContent = {
                                 Icon(Icons.Default.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -2258,6 +2278,21 @@ fun AccessibilityPage(
                                 )
                             }
                         )
+                    }
+
+                    if (settings.autoDismissNotifications) {
+                        SettingsCardItem(position = GroupPosition.MIDDLE) {
+                            SliderSettingItem(
+                                label = "Auto-Dismiss Duration",
+                                value = settings.notificationAutoDismissSeconds.toFloat(),
+                                unit = "s",
+                                valueRange = 1f..10f,
+                                steps = 8,
+                                onValueChange = { seconds ->
+                                    onUpdateSettings { it.copy(notificationAutoDismissSeconds = seconds.roundToInt().coerceIn(1, 10)) }
+                                }
+                            )
+                        }
                     }
 
                     SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.dismissMediaOnPause) {

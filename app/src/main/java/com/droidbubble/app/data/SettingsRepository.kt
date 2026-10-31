@@ -54,6 +54,8 @@ class SettingsRepository(private val context: Context) {
         val SHOW_WEATHER = booleanPreferencesKey("show_weather")
         val SHOW_NETWORK_SPEED = booleanPreferencesKey("show_network_speed")
         val AUTO_DISMISS_NOTIFICATIONS = booleanPreferencesKey("auto_dismiss_notifications")
+        val NOTIFICATION_AUTO_DISMISS_SECONDS = intPreferencesKey("notification_auto_dismiss_seconds")
+        val PERSISTENT_CHARGING = booleanPreferencesKey("persistent_charging")
         val BLURRED_ALBUM_ART_BACKGROUND = booleanPreferencesKey("blurred_album_art_background")
         val MEDIA_WAVE_ANIMATION = booleanPreferencesKey("media_wave_animation")
         val SPINNING_ALBUM_ART = booleanPreferencesKey("spinning_album_art")
@@ -112,6 +114,8 @@ class SettingsRepository(private val context: Context) {
             showWeather = preferences[PreferencesKeys.SHOW_WEATHER] ?: false,
             showNetworkSpeed = preferences[PreferencesKeys.SHOW_NETWORK_SPEED] ?: false,
             autoDismissNotifications = preferences[PreferencesKeys.AUTO_DISMISS_NOTIFICATIONS] ?: false,
+            notificationAutoDismissSeconds = preferences[PreferencesKeys.NOTIFICATION_AUTO_DISMISS_SECONDS] ?: 3,
+            persistentCharging = preferences[PreferencesKeys.PERSISTENT_CHARGING] ?: false,
             blurredAlbumArtBackground = preferences[PreferencesKeys.BLURRED_ALBUM_ART_BACKGROUND] ?: false,
             mediaWaveAnimation = preferences[PreferencesKeys.MEDIA_WAVE_ANIMATION] ?: true,
             spinningAlbumArt = preferences[PreferencesKeys.SPINNING_ALBUM_ART] ?: false,
@@ -174,10 +178,13 @@ class SettingsRepository(private val context: Context) {
                 bubbleEffectEnabled = preferences[PreferencesKeys.BUBBLE_EFFECT_ENABLED] ?: true,
                 dismissMediaOnPause = preferences[PreferencesKeys.DISMISS_MEDIA_ON_PAUSE] ?: false,
                 alwaysShowPill = preferences[PreferencesKeys.ALWAYS_SHOW_PILL] ?: false,
+                showDualActivityInCompact = preferences[PreferencesKeys.SHOW_DUAL_ACTIVITY_IN_COMPACT] ?: true,
                 showFps = preferences[PreferencesKeys.SHOW_FPS] ?: false,
                 showWeather = preferences[PreferencesKeys.SHOW_WEATHER] ?: false,
                 showNetworkSpeed = preferences[PreferencesKeys.SHOW_NETWORK_SPEED] ?: false,
                 autoDismissNotifications = preferences[PreferencesKeys.AUTO_DISMISS_NOTIFICATIONS] ?: false,
+                notificationAutoDismissSeconds = preferences[PreferencesKeys.NOTIFICATION_AUTO_DISMISS_SECONDS] ?: 3,
+                persistentCharging = preferences[PreferencesKeys.PERSISTENT_CHARGING] ?: false,
             blurredAlbumArtBackground = preferences[PreferencesKeys.BLURRED_ALBUM_ART_BACKGROUND] ?: false,
             mediaWaveAnimation = preferences[PreferencesKeys.MEDIA_WAVE_ANIMATION] ?: true,
             spinningAlbumArt = preferences[PreferencesKeys.SPINNING_ALBUM_ART] ?: false,
@@ -236,6 +243,8 @@ class SettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.SHOW_WEATHER] = newSettings.showWeather
             preferences[PreferencesKeys.SHOW_NETWORK_SPEED] = newSettings.showNetworkSpeed
             preferences[PreferencesKeys.AUTO_DISMISS_NOTIFICATIONS] = newSettings.autoDismissNotifications
+            preferences[PreferencesKeys.NOTIFICATION_AUTO_DISMISS_SECONDS] = newSettings.notificationAutoDismissSeconds
+            preferences[PreferencesKeys.PERSISTENT_CHARGING] = newSettings.persistentCharging
             preferences[PreferencesKeys.BLURRED_ALBUM_ART_BACKGROUND] = newSettings.blurredAlbumArtBackground
             preferences[PreferencesKeys.MEDIA_WAVE_ANIMATION] = newSettings.mediaWaveAnimation
             preferences[PreferencesKeys.SPINNING_ALBUM_ART] = newSettings.spinningAlbumArt

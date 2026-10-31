@@ -462,7 +462,11 @@ fun IslandOverlayRoot(
     val progressNotification by IslandStateManager.activeProgress.collectAsState()
     val recording by IslandStateManager.screenRecordingState.collectAsState()
     val activeCall by IslandStateManager.activeCallState.collectAsState()
-    val charging by IslandStateManager.activeCharging.collectAsState()
+    val temporaryCharging by IslandStateManager.activeCharging.collectAsState()
+    val persistentChargingInfo by IslandStateManager.persistentCharging.collectAsState()
+    val isPersistentChargingActive = settings.persistentCharging && persistentChargingInfo != null
+    val isTemporaryChargingActive = settings.showCharging && temporaryCharging != null
+    val charging = temporaryCharging ?: if (isPersistentChargingActive) persistentChargingInfo else null
     val isUnlocked by IslandStateManager.isUnlocked.collectAsState()
     val isDeviceLocked by IslandStateManager.isDeviceLocked.collectAsState()
     val isBluetoothConnected by IslandStateManager.isBluetoothConnected.collectAsState()
@@ -515,7 +519,7 @@ fun IslandOverlayRoot(
     val isNotification = allowInOrientation && currentNotif != null && settings.showNotifications
     val isMedia = allowInOrientation && currentMedia != null && (!settings.dismissMediaOnPause || currentMedia.isPlaying) && (currentMedia.isPlaying || currentMedia.title.isNotBlank()) && settings.showMedia
     val isFlashlight = allowInOrientation && settings.showFlashlight && isFlashlightOn
-    val isCharging = allowInOrientation && settings.showCharging && charging != null
+    val isCharging = allowInOrientation && (isTemporaryChargingActive || (isPersistentChargingActive && !isCall))
     val isUnlock = allowInOrientation && isUnlocked && !isCharging
     val isBluetooth = allowInOrientation && settings.showBluetooth && isBluetoothConnected && !isCharging && !isUnlock
     val isRingerMode = allowInOrientation && settings.showRingerMode && activeRingerMode != null && !isCharging && !isUnlock && !isBluetooth
@@ -3371,8 +3375,8 @@ fun CompactContent(
                     CompactSpinningVinylCover(
                         bitmap = displayArt,
                         isPlaying = media?.isPlaying == true,
-                        size = 20.dp,
-                        modifier = Modifier
+                        size = 22.dp,
+                        modifier = if (isLeftCutout || isCompactDual) Modifier else Modifier.offset(x = (-3).dp)
                     )
                 } else if (displayArt != null) {
                     Image(
@@ -3504,7 +3508,7 @@ fun CompactContent(
 
             IslandPriority.FPS -> {
                 Text(
-                    text = "${fpsInfo.fps} FPS",
+                    text = "${fpsInfo.fps}",
                     color = if (fpsInfo.isSmooth) Color(0xFF30D158) else Color(0xFFFFD60A),
                     fontSize = 11.5.sp,
                     fontWeight = FontWeight.Bold,
