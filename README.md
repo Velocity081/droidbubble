@@ -1,22 +1,26 @@
+<p align="center">
+  <img src="assets/banner.jpg" alt="Droidbubble Banner" width="100%" />
+</p>
+
 # Droidbubble
 
-Droidbubble is an interactive Dynamic Island overlay for Android, built natively using Kotlin and Jetpack Compose. It positions a smooth, responsive island around your device's camera cutout that adapts in real time to what you are doing on your phone, while staying out of the way of your touches.
+Droidbubble brings a fluid, interactive Dynamic Island to Android. Built natively with Kotlin and Jetpack Compose, it wraps smoothly around your front camera cutout, adapting to whatever you're doing in real time while staying out of the way of your touches.
 
-Because Droidbubble is free and open source, there are no ads, no trackers, and no in-app purchases or paywalled features. Everything is available out of the box.
+Free and open source. No ads, no telemetry, and no locked features.
 
 ## Features
 
-- **Media Player**: Shows album artwork and a live equalizer when playing music or podcasts. Expanding the island gives you playback controls, a scrubbable timeline with elapsed and total duration, and subtle dynamic color tinting based on the current album cover.
-- **Screen Recording**: Detects system screen recording automatically, showing a pulsing red indicator and a live timer. When expanded, it offers quick controls to pause, resume, or stop the recording directly from the island.
-- **Live Activities & Progress**: Tracks real-time progress for downloads and background transfers with a live progress bar and percentage indicator.
-- **Incoming Notifications**: Displays pop-in notification banners that expand to show message previews, inline quick actions, and direct reply fields.
-- **Battery & Charging**: Automatically highlights charging wattage and battery level with an ambient green charging indicator when plugged in.
-- **Dual Island Split**: When two activities happen at once (such as music playing while recording your screen or downloading a file), the island splits into two separate bubbles so you can monitor both simultaneously.
-- **Zero-Width Idle State**: When no activities are active, the island smoothly collapses into the center cutout to stay completely invisible and non-intrusive.
-- **Customisable Dimensions**: Adjust width, height, corner radius, and screen alignment offsets to line up with any camera cutout or notch layout.
-- **Tweak-able animations**: Play around with the speed, bounce and snap of the droidbubble’s individual animations to fit your liking.
+- **Media Player**: Live album art, animated equalizer, seekable scrub bar, and adaptive color tints from the playing track.
+- **Dual Bubble Split**: Gracefully splits into two bubbles when multitasking (like music playing alongside screen recording or active downloads).
+- **Screen Recording**: Auto-detects active recordings with a pulsing indicator, live timer, and one-tap controls.
+- **Notifications & Quick Reply**: Clean pop-in banners with message previews and inline replies.
+- **Battery & Charging**: Live wattage readout, battery level, and ambient glow indicators.
+- **System Alerts & Widgets**: Real-time network monitor, weather, FPS meter, ring mode, and airplane mode indicators.
+- **Full Customization**: Fine-tune dimensions, camera cutout offsets, spring animations, custom fonts, and an experimental glass look.
+- **Zero-Footprint Idle**: Completely tucks into the camera cutout when idle, keeping your screen spotless.
 
-Requirements:
+## Requirements
+
 - Android 13+
 
 ## License
