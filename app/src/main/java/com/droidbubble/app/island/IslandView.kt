@@ -71,6 +71,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AirplanemodeActive
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Call
@@ -494,6 +495,14 @@ fun IslandOverlayRoot(
         }
     }
     val displayRingerMode = activeRingerMode ?: lastRingerMode
+    val activeAirplaneMode by IslandStateManager.activeAirplaneMode.collectAsState()
+    var lastAirplaneMode by remember { mutableStateOf(false) }
+    LaunchedEffect(activeAirplaneMode) {
+        if (activeAirplaneMode != null) {
+            lastAirplaneMode = activeAirplaneMode!!
+        }
+    }
+    val displayAirplaneMode = activeAirplaneMode ?: lastAirplaneMode
 
     val idleBounceY = remember { Animatable(0f) }
     val idleBounceScale = remember { Animatable(1f) }
@@ -529,13 +538,14 @@ fun IslandOverlayRoot(
     val isUnlock = allowInOrientation && isUnlocked && !isCharging
     val isBluetooth = allowInOrientation && settings.showBluetooth && isBluetoothConnected && !isCharging && !isUnlock
     val isRingerMode = allowInOrientation && settings.showRingerMode && activeRingerMode != null && !isCharging && !isUnlock && !isBluetooth
+    val isAirplaneMode = allowInOrientation && settings.showAirplaneMode && activeAirplaneMode != null && !isCharging && !isUnlock && !isBluetooth && !isRingerMode
 
     val isFps = allowInOrientation && settings.showFps
     val isWeather = allowInOrientation && settings.showWeather
     val isNetworkSpeed = allowInOrientation && settings.showNetworkSpeed
     val hasPersistent = isFps || isWeather || isNetworkSpeed
 
-    val isOccupied = allowInOrientation && (isCall || isRecording || isNotification || isMedia || isProgress || isCharging || isPersistentCharging || isUnlock || isBluetooth || isFlashlight || isRingerMode || hasPersistent)
+    val isOccupied = allowInOrientation && (isCall || isRecording || isNotification || isMedia || isProgress || isCharging || isPersistentCharging || isUnlock || isBluetooth || isFlashlight || isRingerMode || isAirplaneMode || hasPersistent)
 
     // Unified priority list ordered dynamically by settings.featurePriorities (with persistent views at the bottom by default):
     val orderedActivePriorities = buildList {
@@ -566,8 +576,8 @@ fun IslandOverlayRoot(
     }
 
     val activeCount = orderedActivePriorities.size
-    val isDual = !isCharging && !isUnlock && !isBluetooth && !isRingerMode && activeCount >= 2
-    val isTriple = !isCharging && !isUnlock && !isBluetooth && !isRingerMode && activeCount >= 3
+    val isDual = !isCharging && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode && activeCount >= 2
+    val isTriple = !isCharging && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode && activeCount >= 3
     val isCompactDual = isDual && settings.showDualActivityInCompact
     val speed = settings.animationSpeed.coerceIn(0.5f, 2.0f)
     val speedSq = speed * speed
@@ -673,7 +683,7 @@ fun IslandOverlayRoot(
 
     // Animation Specs (dynamically scaled by settings.animationSpeed):
     val sizeAnimSpecDp = when {
-        isCharging || isUnlock || isBluetooth || isRingerMode -> spring<androidx.compose.ui.unit.Dp>(
+        isCharging || isUnlock || isBluetooth || isRingerMode || isAirplaneMode -> spring<androidx.compose.ui.unit.Dp>(
             dampingRatio = settings.appearDamping,
             stiffness = settings.appearStiffness * speedSq
         )
@@ -935,6 +945,54 @@ fun IslandOverlayRoot(
         label = "chargingProgress"
     )
 
+    // Airplane Mode animations:
+    val airplaneContentAlpha by animateFloatAsState(
+        targetValue = if (isAirplaneMode) 1f else 0f,
+        animationSpec = tween(durationMillis = (130 / speed).roundToInt(), easing = FastOutSlowInEasing),
+        label = "airplaneContentAlpha"
+    )
+
+    var airplaneSecondaryVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(isAirplaneMode) {
+        if (isAirplaneMode) {
+            airplaneSecondaryVisible = false
+            kotlinx.coroutines.delay((100L / speed).toLong())
+            airplaneSecondaryVisible = true
+        } else {
+            airplaneSecondaryVisible = false
+        }
+    }
+
+    val airplaneSecondaryAlpha by animateFloatAsState(
+        targetValue = if (airplaneSecondaryVisible && isAirplaneMode) 1f else 0f,
+        animationSpec = tween(durationMillis = (150 / speed).roundToInt(), easing = FastOutSlowInEasing),
+        label = "airplaneSecondaryAlpha"
+    )
+
+    val airplaneSecondaryScale by animateFloatAsState(
+        targetValue = if (airplaneSecondaryVisible && isAirplaneMode) 1f else 0.4f,
+        animationSpec = spring(
+            dampingRatio = 0.52f,
+            stiffness = 320f * speedSq
+        ),
+        label = "airplaneSecondaryScale"
+    )
+
+    val airplaneFlightProgress = remember { Animatable(0f) }
+    LaunchedEffect(isAirplaneMode, activeAirplaneMode) {
+        if (isAirplaneMode && activeAirplaneMode != null) {
+            airplaneFlightProgress.snapTo(0f)
+            airplaneFlightProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = if (activeAirplaneMode == true) {
+                    tween(durationMillis = (500 / speed).roundToInt(), easing = FastOutSlowInEasing)
+                } else {
+                    tween(durationMillis = (450 / speed).roundToInt(), easing = FastOutLinearInEasing)
+                }
+            )
+        }
+    }
+
     val teardropEarRadius = if (settings.isTeardropCutout) 11.dp else 0.dp
     var mainPillRect by remember { mutableStateOf<android.graphics.Rect?>(null) }
     var auxBubbleRect by remember { mutableStateOf<android.graphics.Rect?>(null) }
@@ -955,6 +1013,7 @@ fun IslandOverlayRoot(
     val chargingIslandWidth = (115.dp + (settings.widthDp * 0.35f).dp).coerceIn(156.dp, 215.dp) + (teardropEarRadius * 2f)
     val unlockIslandWidth = (settings.widthDp * 0.82f).dp.coerceAtLeast(96.dp) + (teardropEarRadius * 2f)
     val ringerIslandWidth = (110.dp + (settings.widthDp * 0.35f).dp).coerceIn(150.dp, 205.dp) + (teardropEarRadius * 2f)
+    val airplaneIslandWidth = (105.dp + (settings.widthDp * 0.35f).dp).coerceIn(148.dp, 200.dp) + (teardropEarRadius * 2f)
     val fpsIslandWidth = (75.dp + (settings.widthDp * 0.35f).dp).coerceIn(120.dp, 195.dp) + (teardropEarRadius * 2f)
     val weatherIslandWidth = (70.dp + (settings.widthDp * 0.35f).dp).coerceIn(102.dp, 185.dp) + (teardropEarRadius * 2f)
     val networkSpeedIslandWidth = (85.dp + (settings.widthDp * 0.35f).dp).coerceIn(132.dp, 205.dp) + (teardropEarRadius * 2f)
@@ -995,6 +1054,7 @@ fun IslandOverlayRoot(
         isExpanded -> 0.dp // Shrinks horizontally into 0 width while card expands!
         isCharging || (!isCompactDual && primaryPriority == IslandPriority.CHARGING) -> chargingIslandWidth
         isRingerMode -> ringerIslandWidth
+        isAirplaneMode -> airplaneIslandWidth
         isUnlock || isBluetooth -> unlockIslandWidth
         isCompactDual && !isSwapMerging -> compactMainFull + (teardropEarRadius * 2f)
         isCallActive -> callIslandWidth
@@ -1010,7 +1070,7 @@ fun IslandOverlayRoot(
     // When expanded, Card 1 slides down to (settings.topOffsetDp + 52).dp, widening to 340.dp * scale.
     // When minimising, Card 1 shrinks back to 0.dp width (transitioning into the small circle at the punch hole) as it slides back up.
     val screenWidth = configuration.screenWidthDp.dp
-    val targetCard1Width = if (isExpanded && !isCharging && !isUnlock && !isBluetooth && !isRingerMode) {
+    val targetCard1Width = if (isExpanded && !isCharging && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode) {
         (340.dp * settings.expandedScale).coerceAtMost(screenWidth - 16.dp)
     } else {
         0.dp
@@ -2342,7 +2402,7 @@ fun IslandOverlayRoot(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                             onClick = {
-                                if (!isExpanded && (isOccupied || hasPersistent) && !isUnlock && !isBluetooth && !isRingerMode) {
+                                if (!isExpanded && (isOccupied || hasPersistent) && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode) {
                                     triggerHaptic()
                                     IslandStateManager.expand(primaryPriority)
                                 } else if (!isExpanded && !isOccupied && !hasPersistent && settings.alwaysShowPill) {
@@ -2394,7 +2454,7 @@ fun IslandOverlayRoot(
                                 }
                             },
                             onLongClick = {
-                                if (!isExpanded && !isUnlock && !isBluetooth && !isRingerMode) {
+                                if (!isExpanded && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode) {
                                     triggerHaptic()
                                     openAppForPriority(
                                         context = context,
@@ -2637,209 +2697,34 @@ fun IslandOverlayRoot(
                             }
                         }
                     } else if (isBluetooth || bluetoothContentAlpha > 0.01f) {
-                        if (settings.isLeftCutout) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(start = 38.dp, end = 12.dp)
-                                    .graphicsLayer { alpha = bluetoothContentAlpha },
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Bluetooth,
-                                    contentDescription = "Bluetooth",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                if (bluetoothCheckmarkAlpha > 0.01f) {
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = "Connected",
-                                        tint = Color.White,
-                                        modifier = Modifier
-                                            .graphicsLayer {
-                                                alpha = bluetoothCheckmarkAlpha
-                                                scaleX = bluetoothCheckmarkScale
-                                                scaleY = bluetoothCheckmarkScale
-                                            }
-                                            .size(18.dp)
-                                    )
-                                }
-                            }
-                        } else {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 8.dp + teardropEarRadius)
-                                    .graphicsLayer { alpha = bluetoothContentAlpha },
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // Left: Bluetooth icon at the slight edge of the island
-                                Box(
-                                    modifier = Modifier.weight(1f),
-                                    contentAlignment = Alignment.CenterStart
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Bluetooth,
-                                        contentDescription = "Bluetooth",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(19.dp)
-                                    )
-                                }
-
-                                // Center: 36dp deadzone strictly over camera cutout
-                                Spacer(modifier = Modifier.width(36.dp))
-
-                                // Right: Checkmark at the slight edge of the island with smooth bounce growth animation
-                                Box(
-                                    modifier = Modifier.weight(1f),
-                                    contentAlignment = Alignment.CenterEnd
-                                ) {
-                                    if (bluetoothCheckmarkAlpha > 0.01f) {
-                                        Icon(
-                                            imageVector = Icons.Default.Check,
-                                            contentDescription = "Connected",
-                                            tint = Color.White,
-                                            modifier = Modifier
-                                                .graphicsLayer {
-                                                    alpha = bluetoothCheckmarkAlpha
-                                                    scaleX = bluetoothCheckmarkScale
-                                                    scaleY = bluetoothCheckmarkScale
-                                                }
-                                                .size(19.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                        BluetoothModePill(
+                            isLeftCutout = settings.isLeftCutout,
+                            bluetoothContentAlpha = bluetoothContentAlpha,
+                            bluetoothCheckmarkAlpha = bluetoothCheckmarkAlpha,
+                            bluetoothCheckmarkScale = bluetoothCheckmarkScale,
+                            teardropEarRadius = teardropEarRadius
+                        )
                     } else if (isRingerMode || ringerContentAlpha > 0.01f) {
-                        val icon = when (displayRingerMode) {
-                            RingerMode.SILENT -> Icons.Default.NotificationsOff
-                            RingerMode.VIBRATE -> Icons.Default.Vibration
-                            RingerMode.RING -> Icons.Default.Notifications
-                        }
-                        val iconTint = if (displayRingerMode == RingerMode.SILENT) {
-                            Color(0xFFFF3B30)
-                        } else {
-                            Color.White
-                        }
-                        val labelText = when (displayRingerMode) {
-                            RingerMode.SILENT -> "Silent"
-                            RingerMode.VIBRATE -> "Vibrate"
-                            RingerMode.RING -> "Ring"
-                        }
-                        val labelColor = if (displayRingerMode == RingerMode.SILENT) {
-                            Color(0xFFFF3B30)
-                        } else {
-                            Color.White
-                        }
-
-                        if (settings.isLeftCutout) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(start = 38.dp, end = 12.dp)
-                                    .graphicsLayer { alpha = ringerContentAlpha },
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
-                            ) {
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = displayRingerMode.name,
-                                    tint = iconTint,
-                                    modifier = Modifier
-                                        .graphicsLayer {
-                                            if (displayRingerMode == RingerMode.RING) {
-                                                transformOrigin = TransformOrigin(0.5f, 0.0f)
-                                                rotationZ = bellShakeRotation.value
-                                            } else if (displayRingerMode == RingerMode.VIBRATE) {
-                                                transformOrigin = TransformOrigin.Center
-                                                translationX = vibrateShakeOffset.value.dp.toPx()
-                                            } else {
-                                                transformOrigin = TransformOrigin.Center
-                                            }
-                                        }
-                                        .size(18.dp)
-                                )
-                                if (ringerSecondaryAlpha > 0.01f) {
-                                    Text(
-                                        text = labelText,
-                                        color = labelColor,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        maxLines = 1,
-                                        modifier = Modifier.graphicsLayer {
-                                            alpha = ringerSecondaryAlpha
-                                            scaleX = ringerSecondaryScale
-                                            scaleY = ringerSecondaryScale
-                                        }
-                                    )
-                                }
-                            }
-                        } else {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 8.dp + teardropEarRadius)
-                                    .graphicsLayer { alpha = ringerContentAlpha },
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // Left: Ringer icon (Bell, Slashed Bell, or Vibration)
-                                Box(
-                                    modifier = Modifier.weight(0.85f),
-                                    contentAlignment = Alignment.CenterStart
-                                ) {
-                                    Icon(
-                                        imageVector = icon,
-                                        contentDescription = displayRingerMode.name,
-                                        tint = iconTint,
-                                        modifier = Modifier
-                                            .graphicsLayer {
-                                                if (displayRingerMode == RingerMode.RING) {
-                                                    transformOrigin = TransformOrigin(0.5f, 0.0f)
-                                                    rotationZ = bellShakeRotation.value
-                                                } else if (displayRingerMode == RingerMode.VIBRATE) {
-                                                    transformOrigin = TransformOrigin.Center
-                                                    translationX = vibrateShakeOffset.value.dp.toPx()
-                                                } else {
-                                                    transformOrigin = TransformOrigin.Center
-                                                }
-                                            }
-                                            .size(19.dp)
-                                    )
-                                }
-
-                                // Center: 28dp deadzone strictly over camera cutout
-                                Spacer(modifier = Modifier.width(28.dp))
-
-                                // Right: Text label (Silent, Vibrate, Ring) with smooth bounce scaling & alpha
-                                Box(
-                                    modifier = Modifier.weight(1.15f),
-                                    contentAlignment = Alignment.CenterEnd
-                                ) {
-                                    if (ringerSecondaryAlpha > 0.01f) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.End,
-                                            modifier = Modifier.graphicsLayer {
-                                                alpha = ringerSecondaryAlpha
-                                                scaleX = ringerSecondaryScale
-                                                scaleY = ringerSecondaryScale
-                                            }
-                                        ) {
-                                            Text(
-                                                text = labelText,
-                                                color = labelColor,
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                maxLines = 1
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        RingerModePill(
+                            displayRingerMode = displayRingerMode,
+                            isLeftCutout = settings.isLeftCutout,
+                            ringerContentAlpha = ringerContentAlpha,
+                            ringerSecondaryAlpha = ringerSecondaryAlpha,
+                            ringerSecondaryScale = ringerSecondaryScale,
+                            bellShakeRotation = bellShakeRotation.value,
+                            vibrateShakeOffset = vibrateShakeOffset.value.dp,
+                            teardropEarRadius = teardropEarRadius
+                        )
+                    } else if (isAirplaneMode || airplaneContentAlpha > 0.01f) {
+                        AirplaneModePill(
+                            displayAirplaneMode = displayAirplaneMode,
+                            isLeftCutout = settings.isLeftCutout,
+                            airplaneContentAlpha = airplaneContentAlpha,
+                            airplaneSecondaryAlpha = airplaneSecondaryAlpha,
+                            airplaneSecondaryScale = airplaneSecondaryScale,
+                            flightProgress = airplaneFlightProgress.value,
+                            teardropEarRadius = teardropEarRadius
+                        )
                     } else if (compactAlpha > 0.01f && animatedCompactWidth > 24.dp) {
                         Box(
                             modifier = Modifier
@@ -2919,7 +2804,7 @@ fun IslandOverlayRoot(
                 } else {
                     animatedBubbleOffsetX + (bubbleSize / 2f)
                 }
-                val rightContentEdgeDp = if (!isCharging && !isUnlock && !isBluetooth && !isRingerMode && animatedBubbleOffsetX > 1.dp) {
+                val rightContentEdgeDp = if (!isCharging && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode && animatedBubbleOffsetX > 1.dp) {
                     maxOf(mainPillRightEdge, bubbleRightEdge)
                 } else {
                     mainPillRightEdge
@@ -6146,3 +6031,359 @@ fun ExpandedNetworkSpeedView(
     }
 }
 
+
+@Composable
+private fun BluetoothModePill(
+    isLeftCutout: Boolean,
+    bluetoothContentAlpha: Float,
+    bluetoothCheckmarkAlpha: Float,
+    bluetoothCheckmarkScale: Float,
+    teardropEarRadius: Dp
+) {
+    if (isLeftCutout) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = 38.dp, end = 12.dp)
+                .graphicsLayer { alpha = bluetoothContentAlpha },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Bluetooth,
+                contentDescription = "Bluetooth",
+                tint = Color.White,
+                modifier = Modifier.size(18.dp)
+            )
+            if (bluetoothCheckmarkAlpha > 0.01f) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Connected",
+                    tint = Color.White,
+                    modifier = Modifier
+                        .graphicsLayer {
+                            alpha = bluetoothCheckmarkAlpha
+                            scaleX = bluetoothCheckmarkScale
+                            scaleY = bluetoothCheckmarkScale
+                        }
+                        .size(18.dp)
+                )
+            }
+        }
+    } else {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 8.dp + teardropEarRadius)
+                .graphicsLayer { alpha = bluetoothContentAlpha },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Bluetooth,
+                    contentDescription = "Bluetooth",
+                    tint = Color.White,
+                    modifier = Modifier.size(19.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(36.dp))
+
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                if (bluetoothCheckmarkAlpha > 0.01f) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Connected",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .graphicsLayer {
+                                alpha = bluetoothCheckmarkAlpha
+                                scaleX = bluetoothCheckmarkScale
+                                scaleY = bluetoothCheckmarkScale
+                            }
+                            .size(19.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RingerModePill(
+    displayRingerMode: IslandStateManager.RingerMode,
+    isLeftCutout: Boolean,
+    ringerContentAlpha: Float,
+    ringerSecondaryAlpha: Float,
+    ringerSecondaryScale: Float,
+    bellShakeRotation: Float,
+    vibrateShakeOffset: Dp,
+    teardropEarRadius: Dp
+) {
+    val icon = when (displayRingerMode) {
+        IslandStateManager.RingerMode.SILENT -> Icons.Default.NotificationsOff
+        IslandStateManager.RingerMode.VIBRATE -> Icons.Default.Vibration
+        IslandStateManager.RingerMode.RING -> Icons.Default.Notifications
+    }
+    val iconTint = if (displayRingerMode == IslandStateManager.RingerMode.SILENT) {
+        Color(0xFFFF3B30)
+    } else {
+        Color.White
+    }
+    val labelText = when (displayRingerMode) {
+        IslandStateManager.RingerMode.SILENT -> "Silent"
+        IslandStateManager.RingerMode.VIBRATE -> "Vibrate"
+        IslandStateManager.RingerMode.RING -> "Ring"
+    }
+    val labelColor = if (displayRingerMode == IslandStateManager.RingerMode.SILENT) {
+        Color(0xFFFF3B30)
+    } else {
+        Color.White
+    }
+
+    if (isLeftCutout) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = 38.dp, end = 12.dp)
+                .graphicsLayer { alpha = ringerContentAlpha },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = displayRingerMode.name,
+                tint = iconTint,
+                modifier = Modifier
+                    .graphicsLayer {
+                        if (displayRingerMode == IslandStateManager.RingerMode.RING) {
+                            transformOrigin = TransformOrigin(0.5f, 0.0f)
+                            rotationZ = bellShakeRotation
+                        } else if (displayRingerMode == IslandStateManager.RingerMode.VIBRATE) {
+                            transformOrigin = TransformOrigin.Center
+                            translationX = vibrateShakeOffset.toPx()
+                        } else {
+                            transformOrigin = TransformOrigin.Center
+                        }
+                    }
+                    .size(18.dp)
+            )
+            if (ringerSecondaryAlpha > 0.01f) {
+                Text(
+                    text = labelText,
+                    color = labelColor,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    modifier = Modifier.graphicsLayer {
+                        alpha = ringerSecondaryAlpha
+                        scaleX = ringerSecondaryScale
+                        scaleY = ringerSecondaryScale
+                    }
+                )
+            }
+        }
+    } else {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 8.dp + teardropEarRadius)
+                .graphicsLayer { alpha = ringerContentAlpha },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier.weight(0.85f),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = displayRingerMode.name,
+                    tint = iconTint,
+                    modifier = Modifier
+                        .graphicsLayer {
+                            if (displayRingerMode == IslandStateManager.RingerMode.RING) {
+                                transformOrigin = TransformOrigin(0.5f, 0.0f)
+                                rotationZ = bellShakeRotation
+                            } else if (displayRingerMode == IslandStateManager.RingerMode.VIBRATE) {
+                                transformOrigin = TransformOrigin.Center
+                                translationX = vibrateShakeOffset.toPx()
+                            } else {
+                                transformOrigin = TransformOrigin.Center
+                            }
+                        }
+                        .size(19.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(28.dp))
+
+            Box(
+                modifier = Modifier.weight(1.15f),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                if (ringerSecondaryAlpha > 0.01f) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End,
+                        modifier = Modifier.graphicsLayer {
+                            alpha = ringerSecondaryAlpha
+                            scaleX = ringerSecondaryScale
+                            scaleY = ringerSecondaryScale
+                        }
+                    ) {
+                        Text(
+                            text = labelText,
+                            color = labelColor,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AirplaneModePill(
+    displayAirplaneMode: Boolean,
+    isLeftCutout: Boolean,
+    airplaneContentAlpha: Float,
+    airplaneSecondaryAlpha: Float,
+    airplaneSecondaryScale: Float,
+    flightProgress: Float,
+    teardropEarRadius: Dp
+) {
+    val airplaneOrange = Color(0xFFFF9500)
+    val labelText = if (displayAirplaneMode) "On" else "Off"
+    val p = flightProgress
+    val transX = if (displayAirplaneMode) {
+        (-42f * (1f - p)).dp
+    } else {
+        if (isLeftCutout) (-32f * p).dp else (34f * p).dp
+    }
+    val transY = if (displayAirplaneMode) {
+        ((1f - p) * 6f - kotlin.math.sin(p * Math.PI).toFloat() * 4f).dp
+    } else {
+        0.dp
+    }
+    val rotZ = if (displayAirplaneMode) {
+        72f + (18f * p)
+    } else {
+        if (isLeftCutout) -90f else 90f
+    }
+    val planeScale = if (displayAirplaneMode) {
+        0.7f + (0.3f * p)
+    } else {
+        (1f - 0.85f * p).coerceAtLeast(0.1f)
+    }
+    val planeAlpha = if (displayAirplaneMode) {
+        p.coerceIn(0f, 1f)
+    } else {
+        (1f - p).coerceIn(0f, 1f)
+    }
+
+    if (isLeftCutout) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = 38.dp, end = 12.dp)
+                .graphicsLayer { alpha = airplaneContentAlpha },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+        ) {
+            Icon(
+                imageVector = Icons.Default.AirplanemodeActive,
+                contentDescription = "Airplane Mode",
+                tint = airplaneOrange,
+                modifier = Modifier
+                    .graphicsLayer {
+                        translationX = transX.toPx()
+                        translationY = transY.toPx()
+                        rotationZ = rotZ
+                        scaleX = planeScale
+                        scaleY = planeScale
+                        alpha = planeAlpha
+                    }
+                    .size(18.dp)
+            )
+            if (airplaneSecondaryAlpha > 0.01f) {
+                Text(
+                    text = labelText,
+                    color = Color.White,
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    modifier = Modifier.graphicsLayer {
+                        alpha = airplaneSecondaryAlpha
+                        scaleX = airplaneSecondaryScale
+                        scaleY = airplaneSecondaryScale
+                    }
+                )
+            }
+        }
+    } else {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 8.dp + teardropEarRadius)
+                .graphicsLayer { alpha = airplaneContentAlpha },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier.weight(0.85f),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AirplanemodeActive,
+                    contentDescription = "Airplane Mode",
+                    tint = airplaneOrange,
+                    modifier = Modifier
+                        .graphicsLayer {
+                            translationX = transX.toPx()
+                            translationY = transY.toPx()
+                            rotationZ = rotZ
+                            scaleX = planeScale
+                            scaleY = planeScale
+                            alpha = planeAlpha
+                        }
+                        .size(19.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(28.dp))
+
+            Box(
+                modifier = Modifier.weight(1.15f),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                if (airplaneSecondaryAlpha > 0.01f) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End,
+                        modifier = Modifier.graphicsLayer {
+                            alpha = airplaneSecondaryAlpha
+                            scaleX = airplaneSecondaryScale
+                            scaleY = airplaneSecondaryScale
+                        }
+                    ) {
+                        Text(
+                            text = labelText,
+                            color = Color.White,
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

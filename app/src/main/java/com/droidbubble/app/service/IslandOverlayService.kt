@@ -238,11 +238,17 @@ class IslandOverlayService : Service() {
                     }
                     IslandStateManager.triggerRingerModeEvent(mode)
                 }
+                "com.droidbubble.app.ACTION_SIMULATE_AIRPLANE" -> {
+                    val state = intent.getBooleanExtra("state", true)
+                    lastAirplaneModeState = state
+                    IslandStateManager.triggerAirplaneModeEvent(state)
+                }
             }
         }
     }
 
     private var lastRingerMode: Int? = null
+    private var lastAirplaneModeState: Boolean? = null
 
     private val powerReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -262,6 +268,16 @@ class IslandOverlayService : Service() {
                     AudioManager.RINGER_MODE_VIBRATE -> IslandStateManager.triggerRingerModeEvent(RingerMode.VIBRATE)
                     AudioManager.RINGER_MODE_NORMAL -> IslandStateManager.triggerRingerModeEvent(RingerMode.RING)
                 }
+                return
+            }
+            if (action == Intent.ACTION_AIRPLANE_MODE_CHANGED) {
+                if (!currentSettings.showAirplaneMode) return
+                val state = intent.getBooleanExtra("state", false)
+                if (lastAirplaneModeState == state) {
+                    return
+                }
+                lastAirplaneModeState = state
+                IslandStateManager.triggerAirplaneModeEvent(state)
                 return
             }
             if (action == Intent.ACTION_USER_PRESENT) {
@@ -491,6 +507,7 @@ class IslandOverlayService : Service() {
             addAction("com.droidbubble.app.ACTION_SIMULATE_RECORDING")
             addAction("com.droidbubble.app.ACTION_SIMULATE_CALL")
             addAction("com.droidbubble.app.ACTION_SIMULATE_RINGER")
+            addAction("com.droidbubble.app.ACTION_SIMULATE_AIRPLANE")
             addAction("com.droidbubble.app.ACTION_EXPAND")
             addAction("com.droidbubble.app.ACTION_COLLAPSE")
             addAction("com.droidbubble.app.ACTION_RESET")
@@ -515,12 +532,16 @@ class IslandOverlayService : Service() {
             addAction("android.bluetooth.adapter.action.CONNECTION_STATE_CHANGED")
             addAction(AudioManager.RINGER_MODE_CHANGED_ACTION)
             addAction("android.media.INTERNAL_RINGER_MODE_CHANGED_ACTION")
+            addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(powerReceiver, powerFilter, Context.RECEIVER_EXPORTED)
         } else {
             registerReceiver(powerReceiver, powerFilter)
         }
+        try {
+            lastAirplaneModeState = Settings.Global.getInt(contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) != 0
+        } catch (_: Exception) {}
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -860,6 +881,7 @@ class IslandOverlayService : Service() {
             val isUnlock = IslandStateManager.isUnlockActive
             val isBluetooth = currentSettings.showBluetooth && IslandStateManager.isBluetoothActive
             val isRingerMode = currentSettings.showRingerMode && IslandStateManager.isRingerModeActive
+            val isAirplaneMode = currentSettings.showAirplaneMode && IslandStateManager.isAirplaneModeActive
             val isFlashlight = currentSettings.showFlashlight && IslandStateManager.isFlashlightActive
             val isOccupied = (currentSettings.showCalls && IslandStateManager.isCallActive) ||
                     (currentSettings.showMedia && IslandStateManager.isMediaActive) ||
@@ -870,7 +892,8 @@ class IslandOverlayService : Service() {
                     isCharging ||
                     isUnlock ||
                     isBluetooth ||
-                    isRingerMode
+                    isRingerMode ||
+                    isAirplaneMode
             val hasPersistentWidgets = currentSettings.showFps || currentSettings.showWeather || currentSettings.showNetworkSpeed
             val shouldShowCompact = isOccupied || currentSettings.alwaysShowPill || hasPersistentWidgets
 
@@ -918,7 +941,7 @@ class IslandOverlayService : Service() {
                 }
             }
 
-            if (isCharging || isUnlock || isBluetooth || isRingerMode) {
+            if (isCharging || isUnlock || isBluetooth || isRingerMode || isAirplaneMode) {
                 isCollapsing = false
                 collapseJob?.cancel()
             } else if (isCollapsing) {

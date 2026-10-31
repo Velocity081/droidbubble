@@ -69,6 +69,10 @@ object IslandStateManager {
     val activeRingerMode: StateFlow<RingerMode?> = _activeRingerMode.asStateFlow()
     private var ringerJob: Job? = null
 
+    private val _activeAirplaneMode = MutableStateFlow<Boolean?>(null)
+    val activeAirplaneMode: StateFlow<Boolean?> = _activeAirplaneMode.asStateFlow()
+    private var airplaneJob: Job? = null
+
     private val _activeMedia = MutableStateFlow<MediaInfo?>(null)
     val activeMedia: StateFlow<MediaInfo?> = _activeMedia.asStateFlow()
 
@@ -209,11 +213,14 @@ object IslandStateManager {
     val isFlashlightActive: Boolean
         get() = _isFlashlightOn.value
 
+    val isAirplaneModeActive: Boolean
+        get() = _activeAirplaneMode.value != null
+
     val isRingerModeActive: Boolean
         get() = _activeRingerMode.value != null
 
     val isOccupied: Boolean
-        get() = isCallActive || isRecordingActive || isNotificationActive || isMediaActive || isProgressActive || isChargingActive || isUnlockActive || isBluetoothActive || isFlashlightActive || isRingerModeActive
+        get() = isCallActive || isRecordingActive || isNotificationActive || isMediaActive || isProgressActive || isChargingActive || isUnlockActive || isBluetoothActive || isFlashlightActive || isRingerModeActive || isAirplaneModeActive
 
     // Live priority determination: Call is top priority, then Media, Flashlight, Progress, Screen Recording, and Notification alerts last
     val currentPriority: IslandPriority
@@ -289,6 +296,17 @@ object IslandStateManager {
             delay(1500) // Should last only 1.5 seconds on screen as requested!
             _activeRingerMode.value = null
             android.util.Log.d("IslandStateManager", "triggerRingerModeEvent finished: reset to null")
+        }
+    }
+
+    fun triggerAirplaneModeEvent(isOn: Boolean) {
+        android.util.Log.d("IslandStateManager", "triggerAirplaneModeEvent($isOn) invoked for 2200ms")
+        airplaneJob?.cancel()
+        _activeAirplaneMode.value = isOn
+        airplaneJob = scope.launch {
+            delay(2200) // Stay visible for ~2.2 seconds
+            _activeAirplaneMode.value = null
+            android.util.Log.d("IslandStateManager", "triggerAirplaneModeEvent finished: reset to null")
         }
     }
 

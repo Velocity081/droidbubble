@@ -65,6 +65,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.filled.AirplanemodeActive
 import androidx.compose.material.icons.filled.Animation
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.AttachFile
@@ -875,7 +876,7 @@ fun MainScreen(
                         )
                     }
 
-                    SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.showRingerMode) {
+                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.showRingerMode) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             headlineContent = { Text("Ring Modes", fontWeight = FontWeight.SemiBold) },
@@ -887,6 +888,24 @@ fun MainScreen(
                                     checked = settings.showRingerMode,
                                     onCheckedChange = { show ->
                                         viewModel.updateSettings { it.copy(showRingerMode = show) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.showAirplaneMode) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Airplane Mode", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Icon(Icons.Default.AirplanemodeActive, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.showAirplaneMode,
+                                    onCheckedChange = { show ->
+                                        viewModel.updateSettings { it.copy(showAirplaneMode = show) }
                                     }
                                 )
                             }
