@@ -63,6 +63,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -891,6 +893,7 @@ fun IslandOverlayRoot(
     val isFpsActive = isFps && primaryPriority == IslandPriority.FPS
     val isWeatherActive = isWeather && primaryPriority == IslandPriority.WEATHER
     val isNetworkSpeedActive = isNetworkSpeed && primaryPriority == IslandPriority.NETWORK_SPEED
+    val isMediaActive = isMedia && primaryPriority == IslandPriority.MEDIA
 
     val callIslandWidth = (75.dp + (settings.widthDp * 0.35f).dp).coerceIn(116.dp, 190.dp) + (teardropEarRadius * 2f)
     val recordingIslandWidth = (75.dp + (settings.widthDp * 0.35f).dp).coerceIn(116.dp, 190.dp) + (teardropEarRadius * 2f)
@@ -900,11 +903,13 @@ fun IslandOverlayRoot(
     val fpsIslandWidth = (75.dp + (settings.widthDp * 0.35f).dp).coerceIn(120.dp, 195.dp) + (teardropEarRadius * 2f)
     val weatherIslandWidth = (70.dp + (settings.widthDp * 0.35f).dp).coerceIn(102.dp, 185.dp) + (teardropEarRadius * 2f)
     val networkSpeedIslandWidth = (85.dp + (settings.widthDp * 0.35f).dp).coerceIn(132.dp, 205.dp) + (teardropEarRadius * 2f)
+    val mediaIslandWidth = (75.dp + (settings.widthDp * 0.35f).dp).coerceIn(104.dp, 190.dp) + (teardropEarRadius * 2f)
 
     val minDualCenter = when (primaryPriority) {
         IslandPriority.NETWORK_SPEED -> 114.dp
         IslandPriority.FPS -> 108.dp
         IslandPriority.CALL, IslandPriority.SCREEN_RECORDING -> 104.dp
+        IslandPriority.MEDIA -> 102.dp
         IslandPriority.WEATHER -> 98.dp
         else -> 96.dp
     }
@@ -912,6 +917,7 @@ fun IslandOverlayRoot(
         IslandPriority.NETWORK_SPEED -> 146.dp
         IslandPriority.FPS -> 140.dp
         IslandPriority.CALL, IslandPriority.SCREEN_RECORDING -> 138.dp
+        IslandPriority.MEDIA -> 136.dp
         IslandPriority.WEATHER -> 134.dp
         else -> 132.dp
     }
@@ -942,6 +948,7 @@ fun IslandOverlayRoot(
         isNetworkSpeedActive -> networkSpeedIslandWidth
         isFpsActive -> fpsIslandWidth
         isWeatherActive -> weatherIslandWidth
+        isMediaActive -> mediaIslandWidth
         isOccupied || hasPersistent -> settings.widthDp.dp.coerceAtLeast(80.dp) + (teardropEarRadius * 2f)
         else -> settings.widthDp.dp.coerceAtLeast(80.dp) + (teardropEarRadius * 2f)
     }
@@ -3015,7 +3022,8 @@ fun CompactSpinningVinylCover(
 
     Box(
         modifier = modifier
-            .size(size)
+            .requiredSize(size)
+            .aspectRatio(1f)
             .graphicsLayer {
                 rotationZ = vinylRotation.value
             }
@@ -3028,7 +3036,9 @@ fun CompactSpinningVinylCover(
                 bitmap = bitmap.asImageBitmap(),
                 contentDescription = "Vinyl Cover",
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .aspectRatio(1f)
             )
         } else {
             Icon(
@@ -3185,7 +3195,7 @@ fun AuxiliaryBubbleContent(
                 CompactSpinningVinylCover(
                     bitmap = displayArt,
                     isPlaying = media?.isPlaying == true,
-                    size = 24.dp
+                    size = 20.dp
                 )
             } else if (displayArt != null) {
                 Image(
@@ -3366,7 +3376,7 @@ fun CompactContent(
                     CompactSpinningVinylCover(
                         bitmap = displayArt,
                         isPlaying = media?.isPlaying == true,
-                        size = 24.dp,
+                        size = 22.dp,
                         modifier = if (isLeftCutout || isCompactDual) Modifier else Modifier.offset(x = (-4).dp)
                     )
                 } else if (displayArt != null) {
