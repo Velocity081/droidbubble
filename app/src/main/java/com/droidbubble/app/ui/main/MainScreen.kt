@@ -2079,7 +2079,26 @@ fun AppearancePage(
                     ) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Glass", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text("Glass", fontWeight = FontWeight.SemiBold)
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                        contentColor = MaterialTheme.colorScheme.primary
+                                    ) {
+                                        Text(
+                                            text = "Experimental",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                            },
                             leadingContent = {
                                 Icon(Icons.Default.Layers, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -2100,7 +2119,7 @@ fun AppearancePage(
                                 label = "Opacity",
                                 value = settings.glassOpacity.toFloat(),
                                 unit = "%",
-                                valueRange = 25f..100f,
+                                valueRange = 0f..100f,
                                 onValueChange = { onUpdateSettings { s -> s.copy(glassOpacity = it.roundToInt()) } }
                             )
                         }

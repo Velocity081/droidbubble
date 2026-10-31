@@ -1433,12 +1433,12 @@ fun IslandOverlayRoot(
                                 .then(
                                     if (animatedCard1Width > 2.dp) {
                                         if (settings.glassEnabled) {
-                                            val glassAlpha = (settings.glassOpacity / 100f).coerceIn(0.25f, 1f)
+                                            val bottomClearAlpha = (settings.glassOpacity / 100f).coerceIn(0f, 1f)
                                             Modifier.background(
                                                 Brush.verticalGradient(
                                                     colors = listOf(
-                                                        Color.Black.copy(alpha = glassAlpha),
-                                                        Color.Black.copy(alpha = 0.0f)
+                                                        Color.Black,
+                                                        Color.Black.copy(alpha = bottomClearAlpha)
                                                     )
                                                 )
                                             )
@@ -1720,12 +1720,12 @@ fun IslandOverlayRoot(
                                 .clip(RoundedCornerShape(animatedCornerRadius))
                                 .then(
                                     if (settings.glassEnabled) {
-                                        val glassAlpha = (settings.glassOpacity / 100f).coerceIn(0.25f, 1f)
+                                        val bottomClearAlpha = (settings.glassOpacity / 100f).coerceIn(0f, 1f)
                                         Modifier.background(
                                             Brush.verticalGradient(
                                                 colors = listOf(
-                                                    Color.Black.copy(alpha = glassAlpha),
-                                                    Color.Black.copy(alpha = 0.0f)
+                                                    Color.Black,
+                                                    Color.Black.copy(alpha = bottomClearAlpha)
                                                 )
                                             )
                                         )
@@ -1984,12 +1984,12 @@ fun IslandOverlayRoot(
                                 .clip(RoundedCornerShape(animatedCornerRadius))
                                 .then(
                                     if (settings.glassEnabled) {
-                                        val glassAlpha = (settings.glassOpacity / 100f).coerceIn(0.25f, 1f)
+                                        val bottomClearAlpha = (settings.glassOpacity / 100f).coerceIn(0f, 1f)
                                         Modifier.background(
                                             Brush.verticalGradient(
                                                 colors = listOf(
-                                                    Color.Black.copy(alpha = glassAlpha),
-                                                    Color.Black.copy(alpha = 0.0f)
+                                                    Color.Black,
+                                                    Color.Black.copy(alpha = bottomClearAlpha)
                                                 )
                                             )
                                         )
@@ -6468,7 +6468,7 @@ private fun GlassBottomHighlight(
                     Brush.horizontalGradient(
                         colors = listOf(
                             Color.White.copy(alpha = 0.02f),
-                            Color.White.copy(alpha = 0.55f * alphaMultiplier),
+                            Color.White.copy(alpha = 0.55f),
                             Color.White.copy(alpha = 0.02f)
                         )
                     )

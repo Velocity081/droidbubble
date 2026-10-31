@@ -57,7 +57,7 @@ data class IslandSettings(
     val swapActivitiesOnSwipe: Boolean = true,
     val blurredAlbumArtBackground: Boolean = false,
     val glassEnabled: Boolean = false,
-    val glassOpacity: Int = 80,
+    val glassOpacity: Int = 25,
     val mediaWaveAnimation: Boolean = true,
     val spinningAlbumArt: Boolean = false,
     val wavyProgressBar: Boolean = true,
