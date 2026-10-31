@@ -1026,7 +1026,8 @@ fun IslandOverlayRoot(
     }
 
     val targetCard1Height = when {
-        isExpanded && (primaryPriority == IslandPriority.SCREEN_RECORDING || primaryPriority == IslandPriority.CALL || primaryPriority == IslandPriority.FPS || primaryPriority == IslandPriority.WEATHER || primaryPriority == IslandPriority.NETWORK_SPEED || primaryPriority == IslandPriority.CHARGING) -> (78.dp * settings.expandedScale).coerceAtLeast(68.dp)
+        isExpanded && primaryPriority == IslandPriority.CHARGING -> (50.dp * settings.expandedScale).coerceAtLeast(44.dp)
+        isExpanded && (primaryPriority == IslandPriority.SCREEN_RECORDING || primaryPriority == IslandPriority.CALL || primaryPriority == IslandPriority.FPS || primaryPriority == IslandPriority.WEATHER || primaryPriority == IslandPriority.NETWORK_SPEED) -> (78.dp * settings.expandedScale).coerceAtLeast(68.dp)
         isExpanded && primaryPriority == IslandPriority.PROGRESS -> (84.dp * settings.expandedScale).coerceAtLeast(74.dp)
         isExpanded && primaryPriority == IslandPriority.POP_NOTIFICATION -> (notifBaseHeight * settings.expandedScale).coerceAtLeast(136.dp)
         isExpanded && primaryPriority == IslandPriority.FLASHLIGHT -> (205.dp * settings.expandedScale).coerceAtLeast(165.dp)
@@ -1056,6 +1057,7 @@ fun IslandOverlayRoot(
 
     fun getExpandedHeightForPriority(priority: IslandPriority?): Dp {
         val baseH = when (priority) {
+            IslandPriority.CHARGING -> 50.dp
             IslandPriority.CALL,
             IslandPriority.SCREEN_RECORDING,
             IslandPriority.FPS,
@@ -1067,6 +1069,7 @@ fun IslandOverlayRoot(
             else -> 180.dp
         }
         val minH = when (priority) {
+            IslandPriority.CHARGING -> 44.dp
             IslandPriority.CALL,
             IslandPriority.SCREEN_RECORDING,
             IslandPriority.FPS,
@@ -1513,6 +1516,16 @@ fun IslandOverlayRoot(
                                                 )
                                             )
                                         }
+                                        primaryPriority == IslandPriority.CHARGING -> {
+                                            val mintGreen = Color(0xFF7CE8A0)
+                                            Brush.verticalGradient(
+                                                colors = listOf(
+                                                    mintGreen.copy(alpha = 0.18f * expandProgress),
+                                                    mintGreen.copy(alpha = 0.05f * expandProgress),
+                                                    Color.Transparent
+                                                )
+                                            )
+                                        }
                                         primaryPriority == IslandPriority.CALL -> {
                                             val greenTint = Color(0xFF30D158)
                                             Brush.verticalGradient(
@@ -1576,7 +1589,7 @@ fun IslandOverlayRoot(
                                         .fillMaxSize()
                                         .padding(
                                             horizontal = ((if (primaryPriority == IslandPriority.FLASHLIGHT) 16.dp else 20.dp) * settings.expandedScale).coerceIn(14.dp, 24.dp),
-                                            vertical = ((if (isCompactRowCard1) 12.dp else if (primaryPriority == IslandPriority.POP_NOTIFICATION) 16.dp else 20.dp) * settings.expandedScale).coerceIn(10.dp, 22.dp)
+                                            vertical = ((if (primaryPriority == IslandPriority.CHARGING) 6.dp else if (isCompactRowCard1) 12.dp else if (primaryPriority == IslandPriority.POP_NOTIFICATION) 16.dp else 20.dp) * settings.expandedScale).coerceIn(5.dp, 22.dp)
                                         )
                                         .graphicsLayer {
                                             alpha = expandedAlpha
@@ -1758,6 +1771,16 @@ fun IslandOverlayRoot(
                                                 )
                                             )
                                         }
+                                        secondaryPriority == IslandPriority.CHARGING -> {
+                                            val mintGreen = Color(0xFF7CE8A0)
+                                            Brush.verticalGradient(
+                                                colors = listOf(
+                                                    mintGreen.copy(alpha = 0.18f * animatedCard2Alpha),
+                                                    mintGreen.copy(alpha = 0.05f * animatedCard2Alpha),
+                                                    Color.Transparent
+                                                )
+                                            )
+                                        }
                                         secondaryPriority == IslandPriority.CALL -> {
                                             val greenTint = Color(0xFF30D158)
                                             Brush.verticalGradient(
@@ -1814,7 +1837,7 @@ fun IslandOverlayRoot(
                                         .fillMaxSize()
                                         .padding(
                                             horizontal = ((if (secondaryPriority == IslandPriority.FLASHLIGHT) 16.dp else 20.dp) * settings.expandedScale).coerceIn(14.dp, 24.dp),
-                                            vertical = ((if (isCompactRowCard2) 12.dp else if (secondaryPriority == IslandPriority.POP_NOTIFICATION) 16.dp else 20.dp) * settings.expandedScale).coerceIn(10.dp, 22.dp)
+                                            vertical = ((if (secondaryPriority == IslandPriority.CHARGING) 6.dp else if (isCompactRowCard2) 12.dp else if (secondaryPriority == IslandPriority.POP_NOTIFICATION) 16.dp else 20.dp) * settings.expandedScale).coerceIn(5.dp, 22.dp)
                                         )
                                 ) {
                                     ExpandedCardContent(
@@ -1989,6 +2012,16 @@ fun IslandOverlayRoot(
                                                 )
                                             )
                                         }
+                                        tertiaryPriority == IslandPriority.CHARGING -> {
+                                            val mintGreen = Color(0xFF7CE8A0)
+                                            Brush.verticalGradient(
+                                                colors = listOf(
+                                                    mintGreen.copy(alpha = 0.18f * animatedCard3Alpha),
+                                                    mintGreen.copy(alpha = 0.05f * animatedCard3Alpha),
+                                                    Color.Transparent
+                                                )
+                                            )
+                                        }
                                         tertiaryPriority == IslandPriority.CALL -> {
                                             val greenTint = Color(0xFF30D158)
                                             Brush.verticalGradient(
@@ -2045,7 +2078,7 @@ fun IslandOverlayRoot(
                                         .fillMaxSize()
                                         .padding(
                                             horizontal = ((if (tertiaryPriority == IslandPriority.FLASHLIGHT) 16.dp else 20.dp) * settings.expandedScale).coerceIn(14.dp, 24.dp),
-                                            vertical = ((if (isCompactRowCard3) 12.dp else if (tertiaryPriority == IslandPriority.POP_NOTIFICATION) 16.dp else 20.dp) * settings.expandedScale).coerceIn(10.dp, 22.dp)
+                                            vertical = ((if (tertiaryPriority == IslandPriority.CHARGING) 6.dp else if (isCompactRowCard3) 12.dp else if (tertiaryPriority == IslandPriority.POP_NOTIFICATION) 16.dp else 20.dp) * settings.expandedScale).coerceIn(5.dp, 22.dp)
                                         )
                                 ) {
                                     ExpandedCardContent(
@@ -2218,7 +2251,8 @@ fun IslandOverlayRoot(
                                     fpsInfo = fpsInfo,
                                     weatherInfo = weatherInfo,
                                     networkSpeedInfo = networkSpeedInfo,
-                                    spinningAlbumArt = settings.spinningAlbumArt
+                                    spinningAlbumArt = settings.spinningAlbumArt,
+                                    charging = charging
                                 )
                             }
                         }
@@ -3212,7 +3246,8 @@ fun AuxiliaryBubbleContent(
     fpsInfo: FpsInfo = FpsInfo(),
     weatherInfo: WeatherInfo = WeatherInfo(),
     networkSpeedInfo: NetworkSpeedInfo = NetworkSpeedInfo(),
-    spinningAlbumArt: Boolean = false
+    spinningAlbumArt: Boolean = false,
+    charging: IslandStateManager.ChargingInfo? = null
 ) {
     when (priority) {
         IslandPriority.CALL -> {
@@ -3354,31 +3389,14 @@ fun AuxiliaryBubbleContent(
         }
         IslandPriority.CHARGING -> {
             val mintChargingGreen = Color(0xFF7CE8A0)
-            Box(
-                modifier = Modifier.size(22.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(22.dp)
-                        .background(
-                            Brush.radialGradient(
-                                listOf(
-                                    mintChargingGreen.copy(alpha = 0.52f),
-                                    mintChargingGreen.copy(alpha = 0.20f),
-                                    Color.Transparent
-                                )
-                            ),
-                            shape = CircleShape
-                        )
-                )
-                Icon(
-                    imageVector = Icons.Default.Bolt,
-                    contentDescription = "Charging",
-                    tint = Color(0xFFB8FFD0),
-                    modifier = Modifier.size(16.dp)
-                )
-            }
+            Text(
+                text = "${charging?.percentage ?: 100}%",
+                color = mintChargingGreen,
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                softWrap = false
+            )
         }
         else -> Unit
     }
@@ -3413,14 +3431,16 @@ fun CompactContent(
                 } else {
                     "Charging"
                 }
-                Text(
-                    text = chargingLabel,
-                    color = Color.White,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Box(modifier = Modifier.padding(start = if (isCompactDual) 4.dp else 5.dp)) {
+                    Text(
+                        text = chargingLabel,
+                        color = Color.White,
+                        fontSize = if (isCompactDual) 12.sp else 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
 
             IslandPriority.CALL -> {
@@ -3686,31 +3706,33 @@ fun CompactContent(
                         maxLines = 1,
                         softWrap = false
                     )
-                    Spacer(modifier = Modifier.width(3.dp))
-                    Box(
-                        modifier = Modifier.size(20.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    if (!isCompactDual) {
+                        Spacer(modifier = Modifier.width(3.dp))
                         Box(
-                            modifier = Modifier
-                                .size(20.dp)
-                                .background(
-                                    Brush.radialGradient(
-                                        listOf(
-                                            mintChargingGreen.copy(alpha = 0.52f),
-                                            mintChargingGreen.copy(alpha = 0.20f),
-                                            Color.Transparent
-                                        )
-                                    ),
-                                    shape = CircleShape
-                                )
-                        )
-                        Icon(
-                            imageVector = Icons.Default.Bolt,
-                            contentDescription = "Charging",
-                            tint = Color(0xFFB8FFD0),
-                            modifier = Modifier.size(15.dp)
-                        )
+                            modifier = Modifier.size(20.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .background(
+                                        Brush.radialGradient(
+                                            listOf(
+                                                mintChargingGreen.copy(alpha = 0.52f),
+                                                mintChargingGreen.copy(alpha = 0.20f),
+                                                Color.Transparent
+                                            )
+                                        ),
+                                        shape = CircleShape
+                                    )
+                            )
+                            Icon(
+                                imageVector = Icons.Default.Bolt,
+                                contentDescription = "Charging",
+                                tint = Color(0xFFB8FFD0),
+                                modifier = Modifier.size(15.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -3747,7 +3769,11 @@ fun CompactContent(
             IslandPriority.WEATHER -> 1.10f
             else -> 1f
         }
-        val startPadding = (if (isCompactDual) 5.5.dp else 8.dp) + teardropEarInset
+        val startPadding = (when {
+            priority == IslandPriority.CHARGING -> if (isCompactDual) 9.dp else 11.dp
+            isCompactDual -> 5.5.dp
+            else -> 8.dp
+        }) + teardropEarInset
         val endPadding = (if (isCompactDual) 10.dp else 8.dp) + teardropEarInset
         val centerSpacerWidth = when {
             isCompactDual -> 20.dp
@@ -4516,16 +4542,16 @@ fun ExpandedChargingView(charging: IslandStateManager.ChargingInfo?, onCollapse:
     val mintChargingGreen = Color(0xFF7CE8A0)
     val wattage = charging?.wattage
     val chargingLabel = if (wattage != null && wattage >= 0.5) {
-        "${wattage.roundToInt().coerceAtLeast(1)}W Fast Charging"
+        "${wattage.roundToInt().coerceAtLeast(1)}W Charging"
     } else {
-        "Connected to Power"
+        "Charging"
     }
     Row(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = (18.dp * scale).coerceIn(12.dp, 22.dp)),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.Start
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -4533,7 +4559,7 @@ fun ExpandedChargingView(charging: IslandStateManager.ChargingInfo?, onCollapse:
         ) {
             Box(
                 modifier = Modifier
-                    .size((44.dp * scale).coerceIn(36.dp, 50.dp))
+                    .size((34.dp * scale).coerceIn(28.dp, 38.dp))
                     .background(
                         Brush.radialGradient(
                             listOf(
@@ -4550,34 +4576,23 @@ fun ExpandedChargingView(charging: IslandStateManager.ChargingInfo?, onCollapse:
                     imageVector = Icons.Default.Bolt,
                     contentDescription = null,
                     tint = Color(0xFFB8FFD0),
-                    modifier = Modifier.size((28.dp * scale).coerceIn(22.dp, 32.dp))
+                    modifier = Modifier.size((22.dp * scale).coerceIn(18.dp, 26.dp))
                 )
             }
             Column {
                 Text(
                     text = "${charging?.percentage ?: 100}% Charged",
                     color = Color.White,
-                    fontSize = (17 * scale).coerceIn(14f, 20f).sp,
+                    fontSize = (15.5f * scale).coerceIn(13f, 17f).sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = chargingLabel,
                     color = mintChargingGreen,
-                    fontSize = (13 * scale).coerceIn(11f, 15f).sp,
+                    fontSize = (12 * scale).coerceIn(10f, 14f).sp,
                     fontWeight = FontWeight.Medium
                 )
             }
-        }
-        BouncyIconButton(
-            onClick = onCollapse,
-            modifier = Modifier.size(28.dp)
-        ) {
-            Icon(
-                Icons.Default.Close,
-                contentDescription = "Collapse",
-                tint = Color(0xFF8E8E93),
-                modifier = Modifier.size(20.dp)
-            )
         }
     }
 }
