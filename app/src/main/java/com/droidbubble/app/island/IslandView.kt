@@ -888,21 +888,42 @@ fun IslandOverlayRoot(
     }
     val isCallActive = isCall && primaryPriority == IslandPriority.CALL
     val isRecordingActive = isRecording && primaryPriority == IslandPriority.SCREEN_RECORDING
+    val isFpsActive = isFps && primaryPriority == IslandPriority.FPS
+    val isWeatherActive = isWeather && primaryPriority == IslandPriority.WEATHER
+    val isNetworkSpeedActive = isNetworkSpeed && primaryPriority == IslandPriority.NETWORK_SPEED
 
     val callIslandWidth = (75.dp + (settings.widthDp * 0.35f).dp).coerceIn(116.dp, 190.dp) + (teardropEarRadius * 2f)
     val recordingIslandWidth = (75.dp + (settings.widthDp * 0.35f).dp).coerceIn(116.dp, 190.dp) + (teardropEarRadius * 2f)
     val chargingIslandWidth = (115.dp + (settings.widthDp * 0.35f).dp).coerceIn(156.dp, 215.dp) + (teardropEarRadius * 2f)
     val unlockIslandWidth = (settings.widthDp * 0.82f).dp.coerceAtLeast(96.dp) + (teardropEarRadius * 2f)
     val ringerIslandWidth = (110.dp + (settings.widthDp * 0.35f).dp).coerceIn(150.dp, 205.dp) + (teardropEarRadius * 2f)
+    val fpsIslandWidth = (75.dp + (settings.widthDp * 0.35f).dp).coerceIn(120.dp, 195.dp) + (teardropEarRadius * 2f)
+    val weatherIslandWidth = (70.dp + (settings.widthDp * 0.35f).dp).coerceIn(102.dp, 185.dp) + (teardropEarRadius * 2f)
+    val networkSpeedIslandWidth = (85.dp + (settings.widthDp * 0.35f).dp).coerceIn(132.dp, 205.dp) + (teardropEarRadius * 2f)
+
+    val minDualCenter = when (primaryPriority) {
+        IslandPriority.NETWORK_SPEED -> 114.dp
+        IslandPriority.FPS -> 108.dp
+        IslandPriority.CALL, IslandPriority.SCREEN_RECORDING -> 104.dp
+        IslandPriority.WEATHER -> 98.dp
+        else -> 96.dp
+    }
+    val minDualLeft = when (primaryPriority) {
+        IslandPriority.NETWORK_SPEED -> 146.dp
+        IslandPriority.FPS -> 140.dp
+        IslandPriority.CALL, IslandPriority.SCREEN_RECORDING -> 138.dp
+        IslandPriority.WEATHER -> 134.dp
+        else -> 132.dp
+    }
 
     val bubbleSize = settings.heightDp.dp
     val dualMainShiftLeft = if (!settings.isLeftCutout) (-1).dp else 0.dp
-    // Dual activity compact main pill width: clamped at a safe squash floor (104dp center, 138dp left)
-    // so indicators like call timer or recording timer never get squashed. Below that floor, reducing widthDp only affects single activity!
+    // Dual activity compact main pill width: clamped at a safe squash floor individually tailored per indicator
+    // so indicators like call timer, recording timer, fps, weather, and wifi speed never get squashed.
     val compactMainFull = if (settings.isLeftCutout) {
-        (settings.widthDp * 0.76f).dp.coerceIn(138.dp, 160.dp)
+        (settings.widthDp * 0.76f).dp.coerceIn(minDualLeft, 160.dp)
     } else {
-        (settings.widthDp * 0.53f).dp.coerceIn(104.dp, 118.dp)
+        (settings.widthDp * 0.53f).dp.coerceIn(minDualCenter, 120.dp)
     }
     val compactMainHalf = compactMainFull / 2f
 
@@ -918,6 +939,9 @@ fun IslandOverlayRoot(
         isCompactDual -> compactMainFull + (teardropEarRadius * 2f)
         isCallActive -> callIslandWidth
         isRecordingActive -> recordingIslandWidth
+        isNetworkSpeedActive -> networkSpeedIslandWidth
+        isFpsActive -> fpsIslandWidth
+        isWeatherActive -> weatherIslandWidth
         isOccupied || hasPersistent -> settings.widthDp.dp.coerceAtLeast(80.dp) + (teardropEarRadius * 2f)
         else -> settings.widthDp.dp.coerceAtLeast(80.dp) + (teardropEarRadius * 2f)
     }
@@ -3524,9 +3548,20 @@ fun CompactContent(
             trailingElement()
         }
     } else {
-        val isTimerIndicator = priority == IslandPriority.CALL || priority == IslandPriority.SCREEN_RECORDING
-        val leftWeight = if (isTimerIndicator) 0.85f else 1f
-        val rightWeight = if (isTimerIndicator) 1.15f else 1f
+        val leftWeight = when (priority) {
+            IslandPriority.NETWORK_SPEED -> 0.75f
+            IslandPriority.FPS -> 0.85f
+            IslandPriority.CALL, IslandPriority.SCREEN_RECORDING -> 0.85f
+            IslandPriority.WEATHER -> 0.90f
+            else -> 1f
+        }
+        val rightWeight = when (priority) {
+            IslandPriority.NETWORK_SPEED -> 1.25f
+            IslandPriority.FPS -> 1.15f
+            IslandPriority.CALL, IslandPriority.SCREEN_RECORDING -> 1.15f
+            IslandPriority.WEATHER -> 1.10f
+            else -> 1f
+        }
         val startPadding = (if (isCompactDual) 5.5.dp else 8.dp) + teardropEarInset
         val endPadding = (if (isCompactDual) 10.dp else 8.dp) + teardropEarInset
         val centerSpacerWidth = if (isCompactDual) 20.dp else 24.dp
