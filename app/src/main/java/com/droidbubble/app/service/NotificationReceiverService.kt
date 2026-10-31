@@ -473,12 +473,6 @@ class NotificationReceiverService : NotificationListenerService() {
         val appIconBitmap = getAppIconBitmap(controller.packageName)
 
         var duration = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
-        if (duration <= 0L) {
-            val durationStr = metadata?.getString(MediaMetadata.METADATA_KEY_DURATION)
-            if (!durationStr.isNullOrBlank()) {
-                duration = durationStr.toLongOrNull() ?: 0L
-            }
-        }
         if (duration <= 0L && notif != null) {
             val maxProgress = notif.notification.extras?.getInt(Notification.EXTRA_PROGRESS_MAX) ?: 0
             val isIndeterminate = notif.notification.extras?.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) ?: false
