@@ -1026,8 +1026,7 @@ fun IslandOverlayRoot(
     }
 
     val targetCard1Height = when {
-        isExpanded && primaryPriority == IslandPriority.CHARGING -> (50.dp * settings.expandedScale).coerceAtLeast(44.dp)
-        isExpanded && (primaryPriority == IslandPriority.SCREEN_RECORDING || primaryPriority == IslandPriority.CALL || primaryPriority == IslandPriority.FPS || primaryPriority == IslandPriority.WEATHER || primaryPriority == IslandPriority.NETWORK_SPEED) -> (78.dp * settings.expandedScale).coerceAtLeast(68.dp)
+        isExpanded && (primaryPriority == IslandPriority.SCREEN_RECORDING || primaryPriority == IslandPriority.CALL || primaryPriority == IslandPriority.FPS || primaryPriority == IslandPriority.WEATHER || primaryPriority == IslandPriority.NETWORK_SPEED || primaryPriority == IslandPriority.CHARGING) -> (78.dp * settings.expandedScale).coerceAtLeast(68.dp)
         isExpanded && primaryPriority == IslandPriority.PROGRESS -> (84.dp * settings.expandedScale).coerceAtLeast(74.dp)
         isExpanded && primaryPriority == IslandPriority.POP_NOTIFICATION -> (notifBaseHeight * settings.expandedScale).coerceAtLeast(136.dp)
         isExpanded && primaryPriority == IslandPriority.FLASHLIGHT -> (205.dp * settings.expandedScale).coerceAtLeast(165.dp)
@@ -1057,24 +1056,24 @@ fun IslandOverlayRoot(
 
     fun getExpandedHeightForPriority(priority: IslandPriority?): Dp {
         val baseH = when (priority) {
-            IslandPriority.CHARGING -> 50.dp
             IslandPriority.CALL,
             IslandPriority.SCREEN_RECORDING,
             IslandPriority.FPS,
             IslandPriority.WEATHER,
-            IslandPriority.NETWORK_SPEED -> 78.dp
+            IslandPriority.NETWORK_SPEED,
+            IslandPriority.CHARGING -> 78.dp
             IslandPriority.PROGRESS -> 84.dp
             IslandPriority.POP_NOTIFICATION -> notifBaseHeight
             IslandPriority.FLASHLIGHT -> 205.dp
             else -> 180.dp
         }
         val minH = when (priority) {
-            IslandPriority.CHARGING -> 44.dp
             IslandPriority.CALL,
             IslandPriority.SCREEN_RECORDING,
             IslandPriority.FPS,
             IslandPriority.WEATHER,
-            IslandPriority.NETWORK_SPEED -> 68.dp
+            IslandPriority.NETWORK_SPEED,
+            IslandPriority.CHARGING -> 68.dp
             IslandPriority.PROGRESS -> 74.dp
             IslandPriority.POP_NOTIFICATION -> 136.dp
             IslandPriority.FLASHLIGHT -> 165.dp
@@ -1583,13 +1582,14 @@ fun IslandOverlayRoot(
                                         primaryPriority == IslandPriority.PROGRESS ||
                                         primaryPriority == IslandPriority.FPS ||
                                         primaryPriority == IslandPriority.WEATHER ||
-                                        primaryPriority == IslandPriority.NETWORK_SPEED
+                                        primaryPriority == IslandPriority.NETWORK_SPEED ||
+                                        primaryPriority == IslandPriority.CHARGING
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(
                                             horizontal = ((if (primaryPriority == IslandPriority.FLASHLIGHT) 16.dp else 20.dp) * settings.expandedScale).coerceIn(14.dp, 24.dp),
-                                            vertical = ((if (primaryPriority == IslandPriority.CHARGING) 6.dp else if (isCompactRowCard1) 12.dp else if (primaryPriority == IslandPriority.POP_NOTIFICATION) 16.dp else 20.dp) * settings.expandedScale).coerceIn(5.dp, 22.dp)
+                                            vertical = ((if (isCompactRowCard1) 12.dp else if (primaryPriority == IslandPriority.POP_NOTIFICATION) 16.dp else 20.dp) * settings.expandedScale).coerceIn(10.dp, 22.dp)
                                         )
                                         .graphicsLayer {
                                             alpha = expandedAlpha
@@ -1831,13 +1831,14 @@ fun IslandOverlayRoot(
                                         secondaryPriority == IslandPriority.PROGRESS ||
                                         secondaryPriority == IslandPriority.FPS ||
                                         secondaryPriority == IslandPriority.WEATHER ||
-                                        secondaryPriority == IslandPriority.NETWORK_SPEED
+                                        secondaryPriority == IslandPriority.NETWORK_SPEED ||
+                                        secondaryPriority == IslandPriority.CHARGING
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(
                                             horizontal = ((if (secondaryPriority == IslandPriority.FLASHLIGHT) 16.dp else 20.dp) * settings.expandedScale).coerceIn(14.dp, 24.dp),
-                                            vertical = ((if (secondaryPriority == IslandPriority.CHARGING) 6.dp else if (isCompactRowCard2) 12.dp else if (secondaryPriority == IslandPriority.POP_NOTIFICATION) 16.dp else 20.dp) * settings.expandedScale).coerceIn(5.dp, 22.dp)
+                                            vertical = ((if (isCompactRowCard2) 12.dp else if (secondaryPriority == IslandPriority.POP_NOTIFICATION) 16.dp else 20.dp) * settings.expandedScale).coerceIn(10.dp, 22.dp)
                                         )
                                 ) {
                                     ExpandedCardContent(
@@ -2072,13 +2073,14 @@ fun IslandOverlayRoot(
                                         tertiaryPriority == IslandPriority.PROGRESS ||
                                         tertiaryPriority == IslandPriority.FPS ||
                                         tertiaryPriority == IslandPriority.WEATHER ||
-                                        tertiaryPriority == IslandPriority.NETWORK_SPEED
+                                        tertiaryPriority == IslandPriority.NETWORK_SPEED ||
+                                        tertiaryPriority == IslandPriority.CHARGING
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(
                                             horizontal = ((if (tertiaryPriority == IslandPriority.FLASHLIGHT) 16.dp else 20.dp) * settings.expandedScale).coerceIn(14.dp, 24.dp),
-                                            vertical = ((if (tertiaryPriority == IslandPriority.CHARGING) 6.dp else if (isCompactRowCard3) 12.dp else if (tertiaryPriority == IslandPriority.POP_NOTIFICATION) 16.dp else 20.dp) * settings.expandedScale).coerceIn(5.dp, 22.dp)
+                                            vertical = ((if (isCompactRowCard3) 12.dp else if (tertiaryPriority == IslandPriority.POP_NOTIFICATION) 16.dp else 20.dp) * settings.expandedScale).coerceIn(10.dp, 22.dp)
                                         )
                                 ) {
                                     ExpandedCardContent(
@@ -4538,28 +4540,38 @@ fun ExpandedMediaView(
 }
 
 @Composable
-fun ExpandedChargingView(charging: IslandStateManager.ChargingInfo?, onCollapse: () -> Unit, scale: Float = 1.0f) {
+fun ExpandedChargingView(
+    charging: IslandStateManager.ChargingInfo?,
+    onCollapse: () -> Unit,
+    scale: Float = 1.0f
+) {
     val mintChargingGreen = Color(0xFF7CE8A0)
     val wattage = charging?.wattage
     val chargingLabel = if (wattage != null && wattage >= 0.5) {
-        "${wattage.roundToInt().coerceAtLeast(1)}W Charging"
+        "${wattage.roundToInt().coerceAtLeast(1)}W"
     } else {
         "Charging"
     }
+
+    val iconSize = (32.dp * scale).coerceIn(26.dp, 38.dp)
+    val iconGap = (12.dp * scale).coerceIn(8.dp, 16.dp)
+    val numberSize = (24f * scale).coerceIn(20f, 28f).sp
+    val subtitleSize = (13f * scale).coerceIn(11.5f, 15f).sp
+
     Row(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = (18.dp * scale).coerceIn(12.dp, 22.dp)),
+        modifier = Modifier.fillMaxSize(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Start
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size((34.dp * scale).coerceIn(28.dp, 38.dp))
+                    .size(iconSize)
                     .background(
                         Brush.radialGradient(
                             listOf(
@@ -4574,23 +4586,33 @@ fun ExpandedChargingView(charging: IslandStateManager.ChargingInfo?, onCollapse:
             ) {
                 Icon(
                     imageVector = Icons.Default.Bolt,
-                    contentDescription = null,
+                    contentDescription = "Charging",
                     tint = Color(0xFFB8FFD0),
                     modifier = Modifier.size((22.dp * scale).coerceIn(18.dp, 26.dp))
                 )
             }
-            Column {
+
+            Spacer(modifier = Modifier.width(iconGap))
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
                 Text(
-                    text = "${charging?.percentage ?: 100}% Charged",
-                    color = Color.White,
-                    fontSize = (15.5f * scale).coerceIn(13f, 17f).sp,
-                    fontWeight = FontWeight.Bold
+                    text = "${charging?.percentage ?: 100}%",
+                    color = mintChargingGreen,
+                    fontSize = numberSize,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp,
+                    maxLines = 1
                 )
+
                 Text(
                     text = chargingLabel,
-                    color = mintChargingGreen,
-                    fontSize = (12 * scale).coerceIn(10f, 14f).sp,
-                    fontWeight = FontWeight.Medium
+                    color = Color(0xFFA1A1AA),
+                    fontSize = subtitleSize,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1
                 )
             }
         }
