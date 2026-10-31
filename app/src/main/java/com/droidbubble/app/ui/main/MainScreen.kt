@@ -89,6 +89,7 @@ import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material.icons.filled.Height
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockReset
@@ -2060,6 +2061,47 @@ fun AppearancePage(
                                 unit = "dp",
                                 valueRange = 0.5f..4.0f,
                                 onValueChange = { onUpdateSettings { s -> s.copy(outlineThicknessDp = (it * 10).roundToInt() / 10f) } }
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val glassActive = settings.glassEnabled
+                    SettingsCardItem(
+                        position = if (glassActive) GroupPosition.TOP else GroupPosition.SINGLE,
+                        isActive = settings.glassEnabled
+                    ) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Glass", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Icon(Icons.Default.Layers, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.glassEnabled,
+                                    onCheckedChange = { enabled ->
+                                        onUpdateSettings { it.copy(glassEnabled = enabled) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+
+                    if (glassActive) {
+                        SettingsCardItem(position = GroupPosition.BOTTOM) {
+                            SliderSettingItem(
+                                label = "Opacity",
+                                value = settings.glassOpacity.toFloat(),
+                                unit = "%",
+                                valueRange = 25f..100f,
+                                onValueChange = { onUpdateSettings { s -> s.copy(glassOpacity = it.roundToInt()) } }
                             )
                         }
                     }

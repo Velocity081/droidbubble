@@ -62,6 +62,8 @@ class SettingsRepository(private val context: Context) {
         val FONT_KEY = stringPreferencesKey("font_key")
         val SWAP_ACTIVITIES_ON_SWIPE = booleanPreferencesKey("swap_activities_on_swipe")
         val BLURRED_ALBUM_ART_BACKGROUND = booleanPreferencesKey("blurred_album_art_background")
+        val GLASS_ENABLED = booleanPreferencesKey("glass_enabled")
+        val GLASS_OPACITY = intPreferencesKey("glass_opacity")
         val MEDIA_WAVE_ANIMATION = booleanPreferencesKey("media_wave_animation")
         val SPINNING_ALBUM_ART = booleanPreferencesKey("spinning_album_art")
         val WAVY_PROGRESS_BAR = booleanPreferencesKey("wavy_progress_bar")
@@ -127,6 +129,8 @@ class SettingsRepository(private val context: Context) {
             fontKey = preferences[PreferencesKeys.FONT_KEY] ?: "DEFAULT",
             swapActivitiesOnSwipe = preferences[PreferencesKeys.SWAP_ACTIVITIES_ON_SWIPE] ?: true,
             blurredAlbumArtBackground = preferences[PreferencesKeys.BLURRED_ALBUM_ART_BACKGROUND] ?: false,
+            glassEnabled = preferences[PreferencesKeys.GLASS_ENABLED] ?: false,
+            glassOpacity = preferences[PreferencesKeys.GLASS_OPACITY] ?: 80,
             mediaWaveAnimation = preferences[PreferencesKeys.MEDIA_WAVE_ANIMATION] ?: true,
             spinningAlbumArt = preferences[PreferencesKeys.SPINNING_ALBUM_ART] ?: false,
             wavyProgressBar = preferences[PreferencesKeys.WAVY_PROGRESS_BAR] ?: true,
@@ -201,6 +205,8 @@ class SettingsRepository(private val context: Context) {
                 fontKey = preferences[PreferencesKeys.FONT_KEY] ?: "DEFAULT",
                 swapActivitiesOnSwipe = preferences[PreferencesKeys.SWAP_ACTIVITIES_ON_SWIPE] ?: true,
             blurredAlbumArtBackground = preferences[PreferencesKeys.BLURRED_ALBUM_ART_BACKGROUND] ?: false,
+            glassEnabled = preferences[PreferencesKeys.GLASS_ENABLED] ?: false,
+            glassOpacity = preferences[PreferencesKeys.GLASS_OPACITY] ?: 80,
             mediaWaveAnimation = preferences[PreferencesKeys.MEDIA_WAVE_ANIMATION] ?: true,
             spinningAlbumArt = preferences[PreferencesKeys.SPINNING_ALBUM_ART] ?: false,
             wavyProgressBar = preferences[PreferencesKeys.WAVY_PROGRESS_BAR] ?: true,
@@ -266,6 +272,8 @@ class SettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.FONT_KEY] = newSettings.fontKey
             preferences[PreferencesKeys.SWAP_ACTIVITIES_ON_SWIPE] = newSettings.swapActivitiesOnSwipe
             preferences[PreferencesKeys.BLURRED_ALBUM_ART_BACKGROUND] = newSettings.blurredAlbumArtBackground
+            preferences[PreferencesKeys.GLASS_ENABLED] = newSettings.glassEnabled
+            preferences[PreferencesKeys.GLASS_OPACITY] = newSettings.glassOpacity
             preferences[PreferencesKeys.MEDIA_WAVE_ANIMATION] = newSettings.mediaWaveAnimation
             preferences[PreferencesKeys.SPINNING_ALBUM_ART] = newSettings.spinningAlbumArt
             preferences[PreferencesKeys.WAVY_PROGRESS_BAR] = newSettings.wavyProgressBar

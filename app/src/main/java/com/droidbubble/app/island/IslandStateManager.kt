@@ -300,11 +300,11 @@ object IslandStateManager {
     }
 
     fun triggerAirplaneModeEvent(isOn: Boolean) {
-        android.util.Log.d("IslandStateManager", "triggerAirplaneModeEvent($isOn) invoked for 2200ms")
+        android.util.Log.d("IslandStateManager", "triggerAirplaneModeEvent($isOn) invoked for 1500ms")
         airplaneJob?.cancel()
         _activeAirplaneMode.value = isOn
         airplaneJob = scope.launch {
-            delay(2200) // Stay visible for ~2.2 seconds
+            delay(1500) // Stay visible for 1.5 seconds exact matching Ring mode duration
             _activeAirplaneMode.value = null
             android.util.Log.d("IslandStateManager", "triggerAirplaneModeEvent finished: reset to null")
         }

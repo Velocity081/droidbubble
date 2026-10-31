@@ -1430,7 +1430,23 @@ fun IslandOverlayRoot(
                                     }
                                 }
                                 .clip(RoundedCornerShape(animatedCornerRadius))
-                                .background(if (animatedCard1Width > 2.dp) Color.Black else Color.Transparent)
+                                .then(
+                                    if (animatedCard1Width > 2.dp) {
+                                        if (settings.glassEnabled) {
+                                            val glassAlpha = (settings.glassOpacity / 100f).coerceIn(0.25f, 1f)
+                                            Modifier.background(
+                                                Brush.verticalGradient(
+                                                    colors = listOf(
+                                                        Color.Black.copy(alpha = glassAlpha),
+                                                        Color.Black.copy(alpha = 0.0f)
+                                                    )
+                                                )
+                                            )
+                                        } else {
+                                            Modifier.background(Color.Black)
+                                        }
+                                    } else Modifier.background(Color.Transparent)
+                                )
                                 .then(
                                     if (settings.showOutline && animatedCard1Width > 8.dp) {
                                         Modifier.border(
@@ -1680,6 +1696,12 @@ fun IslandOverlayRoot(
                                     )
                                 }
                             }
+                            GlassBottomHighlight(
+                                glassEnabled = settings.glassEnabled,
+                                glassOpacity = settings.glassOpacity,
+                                cornerRadius = animatedCornerRadius,
+                                modifier = Modifier.align(Alignment.BottomCenter)
+                            )
                         }
                     }
 
@@ -1696,7 +1718,21 @@ fun IslandOverlayRoot(
                                     scaleY = 0.92f + (0.08f * animatedCard2Alpha.coerceIn(0f, 1f))
                                 }
                                 .clip(RoundedCornerShape(animatedCornerRadius))
-                                .background(Color.Black)
+                                .then(
+                                    if (settings.glassEnabled) {
+                                        val glassAlpha = (settings.glassOpacity / 100f).coerceIn(0.25f, 1f)
+                                        Modifier.background(
+                                            Brush.verticalGradient(
+                                                colors = listOf(
+                                                    Color.Black.copy(alpha = glassAlpha),
+                                                    Color.Black.copy(alpha = 0.0f)
+                                                )
+                                            )
+                                        )
+                                    } else {
+                                        Modifier.background(Color.Black)
+                                    }
+                                )
                                 .then(
                                     if (settings.showOutline) {
                                         Modifier.border(
@@ -1924,6 +1960,12 @@ fun IslandOverlayRoot(
                                     )
                                 }
                             }
+                            GlassBottomHighlight(
+                                glassEnabled = settings.glassEnabled,
+                                glassOpacity = settings.glassOpacity,
+                                cornerRadius = animatedCornerRadius,
+                                modifier = Modifier.align(Alignment.BottomCenter)
+                            )
                         }
                     }
 
@@ -1940,7 +1982,21 @@ fun IslandOverlayRoot(
                                     scaleY = 0.92f + (0.08f * animatedCard3Alpha.coerceIn(0f, 1f))
                                 }
                                 .clip(RoundedCornerShape(animatedCornerRadius))
-                                .background(Color.Black)
+                                .then(
+                                    if (settings.glassEnabled) {
+                                        val glassAlpha = (settings.glassOpacity / 100f).coerceIn(0.25f, 1f)
+                                        Modifier.background(
+                                            Brush.verticalGradient(
+                                                colors = listOf(
+                                                    Color.Black.copy(alpha = glassAlpha),
+                                                    Color.Black.copy(alpha = 0.0f)
+                                                )
+                                            )
+                                        )
+                                    } else {
+                                        Modifier.background(Color.Black)
+                                    }
+                                )
                                 .then(
                                     if (settings.showOutline) {
                                         Modifier.border(
@@ -2166,6 +2222,12 @@ fun IslandOverlayRoot(
                                     )
                                 }
                             }
+                            GlassBottomHighlight(
+                                glassEnabled = settings.glassEnabled,
+                                glassOpacity = settings.glassOpacity,
+                                cornerRadius = animatedCornerRadius,
+                                modifier = Modifier.align(Alignment.BottomCenter)
+                            )
                         }
                     }
                 }
@@ -6385,5 +6447,32 @@ private fun AirplaneModePill(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun GlassBottomHighlight(
+    glassEnabled: Boolean,
+    glassOpacity: Int,
+    cornerRadius: Dp,
+    modifier: Modifier = Modifier
+) {
+    if (glassEnabled) {
+        val alphaMultiplier = (glassOpacity / 100f).coerceIn(0.25f, 1f)
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = (cornerRadius * 0.45f).coerceAtLeast(6.dp))
+                .height(1.2.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.02f),
+                            Color.White.copy(alpha = 0.55f * alphaMultiplier),
+                            Color.White.copy(alpha = 0.02f)
+                        )
+                    )
+                )
+        )
     }
 }
