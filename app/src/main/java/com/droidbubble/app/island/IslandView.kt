@@ -886,18 +886,23 @@ fun IslandOverlayRoot(
             onCompactRectsChange(listOfNotNull(mainPillRect))
         }
     }
-    val chargingIslandWidth = (settings.widthDp + 20).dp.coerceAtLeast(110.dp) + (teardropEarRadius * 2f)
+    val isCallActive = isCall && primaryPriority == IslandPriority.CALL
+    val isRecordingActive = isRecording && primaryPriority == IslandPriority.SCREEN_RECORDING
+
+    val callIslandWidth = (75.dp + (settings.widthDp * 0.35f).dp).coerceIn(116.dp, 190.dp) + (teardropEarRadius * 2f)
+    val recordingIslandWidth = (75.dp + (settings.widthDp * 0.35f).dp).coerceIn(116.dp, 190.dp) + (teardropEarRadius * 2f)
+    val chargingIslandWidth = (115.dp + (settings.widthDp * 0.35f).dp).coerceIn(156.dp, 215.dp) + (teardropEarRadius * 2f)
     val unlockIslandWidth = (settings.widthDp * 0.82f).dp.coerceAtLeast(96.dp) + (teardropEarRadius * 2f)
-    val ringerIslandWidth = (settings.widthDp * 0.95f).dp.coerceAtLeast(110.dp) + (teardropEarRadius * 2f)
+    val ringerIslandWidth = (110.dp + (settings.widthDp * 0.35f).dp).coerceIn(150.dp, 205.dp) + (teardropEarRadius * 2f)
 
     val bubbleSize = settings.heightDp.dp
     val dualMainShiftLeft = if (!settings.isLeftCutout) (-1).dp else 0.dp
-    // Dual activity compact main pill width: clamped at a safe squash floor (94dp center, 132dp left)
-    // so indicators never get squashed. Below that floor, reducing widthDp only affects single activity!
+    // Dual activity compact main pill width: clamped at a safe squash floor (104dp center, 138dp left)
+    // so indicators like call timer or recording timer never get squashed. Below that floor, reducing widthDp only affects single activity!
     val compactMainFull = if (settings.isLeftCutout) {
-        (settings.widthDp * 0.76f).dp.coerceIn(132.dp, 156.dp)
+        (settings.widthDp * 0.76f).dp.coerceIn(138.dp, 160.dp)
     } else {
-        (settings.widthDp * 0.53f).dp.coerceIn(94.dp, 110.dp)
+        (settings.widthDp * 0.53f).dp.coerceIn(104.dp, 118.dp)
     }
     val compactMainHalf = compactMainFull / 2f
 
@@ -911,6 +916,8 @@ fun IslandOverlayRoot(
         isRingerMode -> ringerIslandWidth
         isUnlock || isBluetooth -> unlockIslandWidth
         isCompactDual -> compactMainFull + (teardropEarRadius * 2f)
+        isCallActive -> callIslandWidth
+        isRecordingActive -> recordingIslandWidth
         isOccupied || hasPersistent -> settings.widthDp.dp.coerceAtLeast(80.dp) + (teardropEarRadius * 2f)
         else -> settings.widthDp.dp.coerceAtLeast(80.dp) + (teardropEarRadius * 2f)
     }
@@ -2628,7 +2635,7 @@ fun IslandOverlayRoot(
                             ) {
                                 // Left: Ringer icon (Bell, Slashed Bell, or Vibration)
                                 Box(
-                                    modifier = Modifier.weight(1f),
+                                    modifier = Modifier.weight(0.85f),
                                     contentAlignment = Alignment.CenterStart
                                 ) {
                                     Icon(
@@ -2651,12 +2658,12 @@ fun IslandOverlayRoot(
                                     )
                                 }
 
-                                // Center: 36dp deadzone strictly over camera cutout
-                                Spacer(modifier = Modifier.width(36.dp))
+                                // Center: 28dp deadzone strictly over camera cutout
+                                Spacer(modifier = Modifier.width(28.dp))
 
                                 // Right: Text label (Silent, Vibrate, Ring) with smooth bounce scaling & alpha
                                 Box(
-                                    modifier = Modifier.weight(1f),
+                                    modifier = Modifier.weight(1.15f),
                                     contentAlignment = Alignment.CenterEnd
                                 ) {
                                     if (ringerSecondaryAlpha > 0.01f) {
@@ -3517,10 +3524,12 @@ fun CompactContent(
             trailingElement()
         }
     } else {
-        val leftWeight = 1f
-        val rightWeight = 1f
+        val isTimerIndicator = priority == IslandPriority.CALL || priority == IslandPriority.SCREEN_RECORDING
+        val leftWeight = if (isTimerIndicator) 0.85f else 1f
+        val rightWeight = if (isTimerIndicator) 1.15f else 1f
         val startPadding = (if (isCompactDual) 5.5.dp else 8.dp) + teardropEarInset
         val endPadding = (if (isCompactDual) 10.dp else 8.dp) + teardropEarInset
+        val centerSpacerWidth = if (isCompactDual) 20.dp else 24.dp
         Row(
             modifier = Modifier
                 .fillMaxSize()
@@ -3540,9 +3549,8 @@ fun CompactContent(
                 leadingElement()
             }
 
-            // Camera punch-hole deadzone: STRICTLY 24dp EMPTY SPACE IN THE MIDDLE!
-            // No UI elements will EVER enter or overlap the camera cutout area
-            Spacer(modifier = Modifier.width(24.dp))
+            // Camera punch-hole deadzone
+            Spacer(modifier = Modifier.width(centerSpacerWidth))
 
             // Trailing content: Pinned strictly to the right of the camera punch hole
             Box(

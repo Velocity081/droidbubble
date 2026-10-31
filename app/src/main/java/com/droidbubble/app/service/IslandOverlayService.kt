@@ -586,8 +586,8 @@ class IslandOverlayService : Service() {
 
         val mainHalf = (currentSettings.widthDp * 0.90f).coerceAtLeast(80f) / 2f
         val dualRightEdge = mainHalf + 8f + currentSettings.heightDp + 44f
-        val chargingEdge = ((currentSettings.widthDp + 20f).coerceAtLeast(110f) + 80f) / 2f
-        val totalWidthDp = (maxOf(dualRightEdge, chargingEdge) * 2f).coerceAtLeast(currentSettings.widthDp + 60f)
+        val chargingEdge = ((currentSettings.widthDp + 20f).coerceAtLeast(156f) + 80f) / 2f
+        val totalWidthDp = (maxOf(dualRightEdge, chargingEdge) * 2f).coerceAtLeast(215f)
 
         val initialWidth = if (shouldShowCompact) {
             if (currentSettings.isLeftCutout) {
@@ -831,8 +831,8 @@ class IslandOverlayService : Service() {
             // so WindowManager never resizes params.width mid-animation, completely eliminating horizontal teleporting!
             val mainHalf = (currentSettings.widthDp * 0.90f).coerceAtLeast(80f) / 2f
             val dualRightEdge = mainHalf + 8f + currentSettings.heightDp + 44f
-            val chargingEdge = ((currentSettings.widthDp + 20f).coerceAtLeast(110f) + 80f) / 2f
-            val totalWidthDp = (maxOf(dualRightEdge, chargingEdge) * 2f).coerceAtLeast(currentSettings.widthDp + 60f)
+            val chargingEdge = ((currentSettings.widthDp + 20f).coerceAtLeast(156f) + 80f) / 2f
+            val totalWidthDp = (maxOf(dualRightEdge, chargingEdge) * 2f).coerceAtLeast(215f)
 
             fun applyCompactBounds() {
                 collapseJob?.cancel()
