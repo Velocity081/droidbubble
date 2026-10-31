@@ -16,6 +16,14 @@ class IslandAccessibilityService : AccessibilityService() {
 
         var instance: IslandAccessibilityService? = null
             private set
+
+        fun openNotificationShade(): Boolean {
+            return instance?.performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS) ?: false
+        }
+
+        fun openQuickSettings(): Boolean {
+            return instance?.performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS) ?: false
+        }
     }
 
     override fun onServiceConnected() {

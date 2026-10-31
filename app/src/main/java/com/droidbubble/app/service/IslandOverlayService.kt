@@ -644,13 +644,28 @@ class IslandOverlayService : Service() {
                 ) {
                     IslandOverlayRoot(
                         settings = liveSettings,
-                        onBoundsChange = { _, _ -> }
+                        onBoundsChange = { _, _ -> },
+                        onCompactRectsChange = { rects ->
+                            val interactive = IslandStateManager.isOccupied ||
+                                liveSettings.alwaysShowPill ||
+                                liveSettings.showFps ||
+                                liveSettings.showWeather ||
+                                liveSettings.showNetworkSpeed
+                            touchManager?.updateCompactBounds(
+                                rects = rects,
+                                occupied = interactive,
+                                expanded = IslandStateManager.isExpanded.value
+                            )
+                        }
                     )
                 }
             }
         }
 
         composeView = view
+        touchManager = IslandTouchManager(view).apply {
+            attach()
+        }
 
         try {
             windowManager?.addView(view, layoutParams)
@@ -749,6 +764,7 @@ class IslandOverlayService : Service() {
     }
 
     private fun updateWindowState(expanded: Boolean) {
+        touchManager?.isExpanded = expanded
         val view = composeView ?: return
         val params = layoutParams ?: return
         val density = resources.displayMetrics.density
@@ -901,6 +917,8 @@ class IslandOverlayService : Service() {
     }
 
     private fun removeOverlay() {
+        touchManager?.detach()
+        touchManager = null
         composeView?.let { view ->
             try {
                 windowManager?.removeView(view)

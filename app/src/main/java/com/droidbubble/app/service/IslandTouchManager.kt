@@ -27,6 +27,15 @@ class IslandTouchManager(private val overlayView: View) {
 
     private val compactRects = mutableListOf<Rect>()
 
+    private val attachStateListener = object : View.OnAttachStateChangeListener {
+        override fun onViewAttachedToWindow(v: View) {
+            registerListener()
+        }
+        override fun onViewDetachedFromWindow(v: View) {
+            isRegistered = false
+        }
+    }
+
     fun updateCompactBounds(rects: List<Rect>, occupied: Boolean, expanded: Boolean) {
         synchronized(compactRects) {
             compactRects.clear()
@@ -44,31 +53,12 @@ class IslandTouchManager(private val overlayView: View) {
     }
 
     fun attach() {
-        if (isRegistered && overlayView.viewTreeObserver.isAlive) return
-        try {
-            val vto = overlayView.viewTreeObserver
-            if (!vto.isAlive) return
-
-            val listenerClass = Class.forName("android.view.ViewTreeObserver\$OnComputeInternalInsetsListener")
-            val addMethod = ViewTreeObserver::class.java.getMethod("addOnComputeInternalInsetsListener", listenerClass)
-
-            val handler = InvocationHandler { _, method, args ->
-                if (method.name == "onComputeInternalInsets" && args != null && args.isNotEmpty()) {
-                    val insetsInfo = args[0]
-                    applyInsets(insetsInfo)
-                }
-                null
-            }
-
-            insetsListener = Proxy.newProxyInstance(listenerClass.classLoader, arrayOf(listenerClass), handler)
-            addMethod.invoke(vto, insetsListener)
-            isRegistered = true
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        overlayView.addOnAttachStateChangeListener(attachStateListener)
+        registerListener()
     }
 
     fun detach() {
+        overlayView.removeOnAttachStateChangeListener(attachStateListener)
         if (!isRegistered || insetsListener == null) return
         try {
             val listenerClass = Class.forName("android.view.ViewTreeObserver\$OnComputeInternalInsetsListener")
@@ -79,6 +69,33 @@ class IslandTouchManager(private val overlayView: View) {
         }
         isRegistered = false
         insetsListener = null
+    }
+
+    private fun registerListener() {
+        if (isRegistered && overlayView.viewTreeObserver.isAlive) return
+        try {
+            val vto = overlayView.viewTreeObserver
+            if (!vto.isAlive) return
+
+            val listenerClass = Class.forName("android.view.ViewTreeObserver\$OnComputeInternalInsetsListener")
+            val addMethod = ViewTreeObserver::class.java.getMethod("addOnComputeInternalInsetsListener", listenerClass)
+
+            if (insetsListener == null) {
+                val handler = InvocationHandler { _, method, args ->
+                    if (method.name == "onComputeInternalInsets" && args != null && args.isNotEmpty()) {
+                        val insetsInfo = args[0]
+                        applyInsets(insetsInfo)
+                    }
+                    null
+                }
+                insetsListener = Proxy.newProxyInstance(listenerClass.classLoader, arrayOf(listenerClass), handler)
+            }
+
+            addMethod.invoke(vto, insetsListener)
+            isRegistered = true
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun applyInsets(insetsInfo: Any) {

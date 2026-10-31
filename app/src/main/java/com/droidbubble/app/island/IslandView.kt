@@ -169,6 +169,9 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import com.droidbubble.app.service.IslandAccessibilityService
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -446,7 +449,8 @@ private fun BouncyIconButton(
 @Composable
 fun IslandOverlayRoot(
     settings: IslandSettings,
-    onBoundsChange: (widthPx: Int, heightPx: Int) -> Unit
+    onBoundsChange: (widthPx: Int, heightPx: Int) -> Unit = { _, _ -> },
+    onCompactRectsChange: (rects: List<android.graphics.Rect>) -> Unit = {}
 ) {
     androidx.compose.runtime.CompositionLocalProvider(LocalIslandHapticsEnabled provides settings.hapticsEnabled) {
     val isExpanded by IslandStateManager.isExpanded.collectAsState()
@@ -873,6 +877,14 @@ fun IslandOverlayRoot(
     )
 
     val teardropEarRadius = if (settings.isTeardropCutout) 11.dp else 0.dp
+    var mainPillRect by remember { mutableStateOf<android.graphics.Rect?>(null) }
+    var auxBubbleRect by remember { mutableStateOf<android.graphics.Rect?>(null) }
+    LaunchedEffect(isDual) {
+        if (!isDual && auxBubbleRect != null) {
+            auxBubbleRect = null
+            onCompactRectsChange(listOfNotNull(mainPillRect))
+        }
+    }
     val chargingIslandWidth = (settings.widthDp + 20).dp.coerceAtLeast(140.dp) + (teardropEarRadius * 2f)
     val unlockIslandWidth = (settings.widthDp * 0.82f).dp.coerceAtLeast(108.dp) + (teardropEarRadius * 2f)
     val ringerIslandWidth = (settings.widthDp * 0.95f).dp.coerceAtLeast(130.dp) + (teardropEarRadius * 2f)
@@ -1156,9 +1168,32 @@ fun IslandOverlayRoot(
         return@CompositionLocalProvider
     }
 
+    val screenDensity = LocalDensity.current.density
     // Outer container: full touch bounds when expanded to capture outside tap, or exact bounds when minimised
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (!isExpanded && expandProgress <= 0.05f) {
+                    Modifier.pointerInput(Unit) {
+                        detectVerticalDragGestures { change, dragAmount ->
+                            if (dragAmount > 15f) {
+                                change.consume()
+                                val isRightSide = change.position.x > (screenWidth.value * screenDensity * 0.72f)
+                                if (isRightSide) {
+                                    if (!IslandAccessibilityService.openQuickSettings()) {
+                                        IslandStateManager.expand(primaryPriority)
+                                    }
+                                } else {
+                                    if (!IslandAccessibilityService.openNotificationShade()) {
+                                        IslandStateManager.expand(primaryPriority)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else Modifier
+            ),
         contentAlignment = Alignment.TopCenter
     ) {
         // Tap outside backdrop when expanded (active during whole expand and collapse animation)
@@ -1992,6 +2027,21 @@ fun IslandOverlayRoot(
                         modifier = Modifier
                             .offset { IntOffset(x = bubbleOffsetXPx, y = bubbleOffsetYPx) }
                             .size(bubbleSize)
+                            .onGloballyPositioned { coordinates ->
+                                if (coordinates.isAttached) {
+                                    val b = coordinates.boundsInWindow()
+                                    val r = android.graphics.Rect(
+                                        b.left.toInt(),
+                                        b.top.toInt(),
+                                        b.right.toInt(),
+                                        b.bottom.toInt()
+                                    )
+                                    if (auxBubbleRect != r) {
+                                        auxBubbleRect = r
+                                        onCompactRectsChange(listOfNotNull(mainPillRect, r))
+                                    }
+                                }
+                            }
                             .graphicsLayer { alpha = bubbleAlpha }
                             .clip(CircleShape)
                             .background(Color.Black)
@@ -2078,6 +2128,21 @@ fun IslandOverlayRoot(
                         .offset { IntOffset(x = mainPillOffsetXPx, y = 0) }
                         .width(animatedCompactWidth)
                         .height(compactPillHeight)
+                        .onGloballyPositioned { coordinates ->
+                            if (coordinates.isAttached) {
+                                val b = coordinates.boundsInWindow()
+                                val r = android.graphics.Rect(
+                                    b.left.toInt(),
+                                    b.top.toInt(),
+                                    b.right.toInt(),
+                                    b.bottom.toInt()
+                                )
+                                if (mainPillRect != r) {
+                                    mainPillRect = r
+                                    onCompactRectsChange(listOfNotNull(r, if (isDual) auxBubbleRect else null))
+                                }
+                            }
+                        }
                         .graphicsLayer {
                             alpha = compactPillAlpha
                             if (settings.isTeardropCutout) {
@@ -3441,7 +3506,7 @@ fun CompactContent(
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = 38.dp, end = 10.dp),
+                .padding(start = 38.dp, end = if (isCompactDual) 11.dp else 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.End)
         ) {
@@ -3452,7 +3517,7 @@ fun CompactContent(
         val leftWeight = 1f
         val rightWeight = 1f
         val startPadding = (if (isCompactDual) 5.5.dp else 8.dp) + teardropEarInset
-        val endPadding = (if (isCompactDual) 7.5.dp else 8.dp) + teardropEarInset
+        val endPadding = (if (isCompactDual) 10.dp else 8.dp) + teardropEarInset
         Row(
             modifier = Modifier
                 .fillMaxSize()
