@@ -569,6 +569,8 @@ fun IslandOverlayRoot(
     val isDual = !isCharging && !isUnlock && !isBluetooth && !isRingerMode && activeCount >= 2
     val isTriple = !isCharging && !isUnlock && !isBluetooth && !isRingerMode && activeCount >= 3
     val isCompactDual = isDual && settings.showDualActivityInCompact
+    val speed = settings.animationSpeed.coerceIn(0.5f, 2.0f)
+    val speedSq = speed * speed
 
     val primaryPriority: IslandPriority = orderedActivePriorities.firstOrNull() ?: IslandPriority.IDLE
 
@@ -580,11 +582,16 @@ fun IslandOverlayRoot(
     }
 
     var isSwappedCompactActivities by remember { mutableStateOf(false) }
+    var isSwapMerging by remember { mutableStateOf(false) }
+    var isSwappingActivities by remember { mutableStateOf(false) }
     val bubbleSwapScale = remember { Animatable(1f) }
+    val swapContentAlpha = remember { Animatable(1f) }
 
     LaunchedEffect(secondaryPriority) {
         if (secondaryPriority == null) {
             isSwappedCompactActivities = false
+            isSwapMerging = false
+            isSwappingActivities = false
         }
     }
 
@@ -592,12 +599,26 @@ fun IslandOverlayRoot(
     val compactSecondaryPriority = if (isCompactDual && isSwappedCompactActivities && secondaryPriority != null) primaryPriority else secondaryPriority
 
     fun triggerSwapActivities() {
-        if (!isCompactDual || secondaryPriority == null) return
+        if (!isCompactDual || secondaryPriority == null || isSwappingActivities) return
         triggerHaptic()
         coroutineScope.launch {
-            bubbleSwapScale.animateTo(0.12f, animationSpec = tween(110, easing = FastOutSlowInEasing))
+            isSwappingActivities = true
+            isSwapMerging = true
+            launch {
+                bubbleSwapScale.animateTo(0.7f, animationSpec = tween((140 / speed).toInt().coerceAtLeast(50), easing = FastOutSlowInEasing))
+            }
+            delay((150L / speed).toLong().coerceAtLeast(60L))
+
+            swapContentAlpha.animateTo(0f, animationSpec = tween((60 / speed).toInt().coerceAtLeast(30)))
             isSwappedCompactActivities = !isSwappedCompactActivities
-            bubbleSwapScale.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+            swapContentAlpha.animateTo(1f, animationSpec = tween((80 / speed).toInt().coerceAtLeast(40)))
+
+            isSwapMerging = false
+            launch {
+                bubbleSwapScale.animateTo(1f, animationSpec = spring(dampingRatio = settings.splitDamping, stiffness = settings.splitStiffness * speedSq))
+            }
+            delay((350L / speed).toLong().coerceAtLeast(120L))
+            isSwappingActivities = false
         }
     }
 
@@ -648,8 +669,7 @@ fun IslandOverlayRoot(
         else -> defaultTaskOutline
     }
 
-    val speed = settings.animationSpeed.coerceIn(0.5f, 2.0f)
-    val speedSq = speed * speed
+
 
     // Animation Specs (dynamically scaled by settings.animationSpeed):
     val sizeAnimSpecDp = when {
@@ -976,7 +996,7 @@ fun IslandOverlayRoot(
         isCharging || (!isCompactDual && primaryPriority == IslandPriority.CHARGING) -> chargingIslandWidth
         isRingerMode -> ringerIslandWidth
         isUnlock || isBluetooth -> unlockIslandWidth
-        isCompactDual -> compactMainFull + (teardropEarRadius * 2f)
+        isCompactDual && !isSwapMerging -> compactMainFull + (teardropEarRadius * 2f)
         isCallActive -> callIslandWidth
         isRecordingActive -> recordingIslandWidth
         isNetworkSpeedActive -> networkSpeedIslandWidth
@@ -1074,7 +1094,7 @@ fun IslandOverlayRoot(
     val targetCard3Alpha = if (card3Expanded && showTertiaryCard) 1f else 0f
     val targetCard3OffsetY = if (card3Expanded && showTertiaryCard) 0.dp else (-14).dp
 
-    val targetDualMainShiftX = if (!isCharging && !isUnlock && !isBluetooth && !isRingerMode && isCompactDual && !isExpanded && !settings.isLeftCutout) {
+    val targetDualMainShiftX = if (!isCharging && !isUnlock && !isBluetooth && !isRingerMode && isCompactDual && !isExpanded && !settings.isLeftCutout && !isSwapMerging) {
         -dualMainShiftLeft
     } else {
         0.dp
@@ -1091,7 +1111,7 @@ fun IslandOverlayRoot(
         (compactMainHalf - dualMainShiftLeft) + bubbleGap + (bubbleSize / 2f)
     }
 
-    val shouldEmergeSecondary = !isCharging && !isUnlock && !isBluetooth && !isRingerMode && isCompactDual && !isExpanded && (isOccupied || hasPersistent)
+    val shouldEmergeSecondary = !isCharging && !isUnlock && !isBluetooth && !isRingerMode && isCompactDual && !isExpanded && (isOccupied || hasPersistent) && !isSwapMerging
     var secondaryBubbleEmerged by remember { mutableStateOf(false) }
     LaunchedEffect(shouldEmergeSecondary) {
         if (shouldEmergeSecondary) {
@@ -1240,12 +1260,12 @@ fun IslandOverlayRoot(
     }
 
     val swipeToSwapModifier = if (!isExpanded && isCompactDual && settings.swapActivitiesOnSwipe) {
-        Modifier.pointerInput(Unit) {
+        Modifier.pointerInput(isSwappingActivities) {
             var totalDragX = 0f
             detectHorizontalDragGestures(
                 onDragStart = { totalDragX = 0f },
                 onDragEnd = {
-                    if (kotlin.math.abs(totalDragX) > 18f) {
+                    if (!isSwappingActivities && kotlin.math.abs(totalDragX) > 18f) {
                         triggerSwapActivities()
                     }
                     totalDragX = 0f
@@ -2109,6 +2129,8 @@ fun IslandOverlayRoot(
                     ((1f - expandProgress * 4f).coerceIn(0f, 1f))
                 } else if (!isOccupied && !hasPersistent) {
                     0f
+                } else if (isSwapMerging) {
+                    (animatedBubbleOffsetX / restingBubbleCenterX.coerceAtLeast(1.dp)).coerceIn(0f, 1f)
                 } else {
                     1f
                 }
@@ -2185,7 +2207,7 @@ fun IslandOverlayRoot(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .graphicsLayer { alpha = contentAlpha },
+                                    .graphicsLayer { alpha = contentAlpha * swapContentAlpha.value },
                                 contentAlignment = Alignment.Center
                             ) {
                                 AuxiliaryBubbleContent(
@@ -2786,7 +2808,7 @@ fun IslandOverlayRoot(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .graphicsLayer { alpha = compactAlpha },
+                                .graphicsLayer { alpha = compactAlpha * swapContentAlpha.value },
                             contentAlignment = Alignment.Center
                         ) {
                             CompactContent(

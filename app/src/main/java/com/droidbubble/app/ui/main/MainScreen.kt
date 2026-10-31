@@ -118,6 +118,7 @@ import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.FontDownload
 import androidx.compose.material3.RadioButton
 import com.droidbubble.app.theme.ISLAND_FONTS
+import com.droidbubble.app.model.DEFAULT_FEATURE_PRIORITIES
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.AlertDialog
@@ -614,18 +615,8 @@ fun MainScreen(
             }
 
             item {
-                val reorderableKeys = remember {
-                    val valid = listOf(
-                        "CALL",
-                        "MEDIA",
-                        "NOTIFICATION",
-                        "PROGRESS",
-                        "RECORDING",
-                        "FLASHLIGHT",
-                        "FPS",
-                        "WEATHER",
-                        "NETWORK_SPEED"
-                    )
+                val reorderableKeys = remember(settings.featurePriorities) {
+                    val valid = DEFAULT_FEATURE_PRIORITIES
                     val list = settings.featurePriorities.filter { it in valid }.toMutableList()
                     for (v in valid) {
                         if (v !in list) list.add(v)
@@ -638,17 +629,7 @@ fun MainScreen(
 
                 LaunchedEffect(settings.featurePriorities) {
                     if (draggingKey == null) {
-                        val valid = listOf(
-                            "CALL",
-                            "MEDIA",
-                            "NOTIFICATION",
-                            "PROGRESS",
-                            "RECORDING",
-                            "FLASHLIGHT",
-                            "FPS",
-                            "WEATHER",
-                            "NETWORK_SPEED"
-                        )
+                        val valid = DEFAULT_FEATURE_PRIORITIES
                         val list = settings.featurePriorities.filter { it in valid }.toMutableList()
                         for (v in valid) {
                             if (v !in list) list.add(v)
@@ -1951,6 +1932,56 @@ fun AppearancePage(
     modifier: Modifier = Modifier
 ) {
     BackHandler(onBack = onBack)
+    var showFontDialog by remember { mutableStateOf(false) }
+
+    if (showFontDialog) {
+        AlertDialog(
+            onDismissRequest = { showFontDialog = false },
+            title = { Text("Select Font", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    ISLAND_FONTS.forEach { fontOption ->
+                        val isSelected = (settings.fontKey == fontOption.key) || (settings.fontKey.isBlank() && fontOption.key == "DEFAULT")
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable {
+                                    onUpdateSettings { it.copy(fontKey = fontOption.key) }
+                                    showFontDialog = false
+                                }
+                                .padding(horizontal = 8.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = fontOption.name,
+                                fontFamily = fontOption.family,
+                                fontSize = 16.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = {
+                                    onUpdateSettings { it.copy(fontKey = fontOption.key) }
+                                    showFontDialog = false
+                                }
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showFontDialog = false }) {
+                    Text("Done")
+                }
+            }
+        )
+    }
 
     Scaffold(
         modifier = modifier,
@@ -2208,52 +2239,23 @@ fun AppearancePage(
             }
 
             item {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    ISLAND_FONTS.forEachIndexed { index, fontOption ->
-                        val isSelected = (settings.fontKey == fontOption.key) || (settings.fontKey.isBlank() && fontOption.key == "DEFAULT")
-                        val itemPosition = when {
-                            ISLAND_FONTS.size == 1 -> GroupPosition.SINGLE
-                            index == 0 -> GroupPosition.TOP
-                            index == ISLAND_FONTS.size - 1 -> GroupPosition.BOTTOM
-                            else -> GroupPosition.MIDDLE
-                        }
-                        SettingsCardItem(
-                            position = itemPosition,
-                            isActive = isSelected
-                        ) {
-                            ListItem(
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                modifier = Modifier.clickable {
-                                    onUpdateSettings { it.copy(fontKey = fontOption.key) }
-                                },
-                                headlineContent = {
-                                    Text(
-                                        text = fontOption.name,
-                                        fontFamily = fontOption.family,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                },
-                                supportingContent = {
-                                    Text(
-                                        text = "The quick brown fox jumps over the lazy dog",
-                                        fontFamily = fontOption.family,
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                },
-                                trailingContent = {
-                                    RadioButton(
-                                        selected = isSelected,
-                                        onClick = {
-                                            onUpdateSettings { it.copy(fontKey = fontOption.key) }
-                                        }
-                                    )
-                                }
+                SettingsCardItem(position = GroupPosition.SINGLE) {
+                    ListItem(
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        modifier = Modifier.clickable { showFontDialog = true },
+                        headlineContent = { Text("Change Font", fontWeight = FontWeight.SemiBold) },
+                        leadingContent = {
+                            Icon(Icons.Default.FontDownload, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        },
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                contentDescription = "Change Font",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.size(16.dp)
                             )
                         }
-                    }
+                    )
                 }
             }
 
@@ -2349,7 +2351,6 @@ fun GeneralPage(
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             headlineContent = { Text("Auto-Dismiss Notifications", fontWeight = FontWeight.SemiBold) },
-                            supportingContent = { Text("Dismiss notification cards automatically after ${settings.notificationAutoDismissSeconds} seconds") },
                             leadingContent = {
                                 Icon(Icons.Default.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -2423,7 +2424,6 @@ fun GeneralPage(
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             headlineContent = { Text("Swipe to Swap Activities", fontWeight = FontWeight.SemiBold) },
-                            supportingContent = { Text("Swipe left/right on minimised island to swap main and secondary activities") },
                             leadingContent = {
                                 Icon(Icons.Default.TouchApp, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -2442,7 +2442,6 @@ fun GeneralPage(
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             headlineContent = { Text("Dismiss on Pause", fontWeight = FontWeight.SemiBold) },
-                            supportingContent = { Text("Automatically hide the media player island when playback is paused") },
                             leadingContent = {
                                 Icon(Icons.Default.MusicNote, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -2461,7 +2460,6 @@ fun GeneralPage(
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             headlineContent = { Text("Hide on Lock Screen", fontWeight = FontWeight.SemiBold) },
-                            supportingContent = { Text("Do not show the island when the phone is locked, even if an activity is active") },
                             leadingContent = {
                                 Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
