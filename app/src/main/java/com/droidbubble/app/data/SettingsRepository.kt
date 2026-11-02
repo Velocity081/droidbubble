@@ -54,6 +54,8 @@ class SettingsRepository(private val context: Context) {
         val SHOW_FPS = booleanPreferencesKey("show_fps")
         val SHOW_WEATHER = booleanPreferencesKey("show_weather")
         val SHOW_NETWORK_SPEED = booleanPreferencesKey("show_network_speed")
+        val SHOW_HOTSPOT = booleanPreferencesKey("show_hotspot")
+        val SHOW_ALARM = booleanPreferencesKey("show_alarm")
         val AUTO_DISMISS_NOTIFICATIONS = booleanPreferencesKey("auto_dismiss_notifications")
         val NOTIFICATION_AUTO_DISMISS_SECONDS = intPreferencesKey("notification_auto_dismiss_seconds")
         val PERSISTENT_CHARGING = booleanPreferencesKey("persistent_charging")
@@ -122,6 +124,8 @@ class SettingsRepository(private val context: Context) {
             showFps = preferences[PreferencesKeys.SHOW_FPS] ?: false,
             showWeather = preferences[PreferencesKeys.SHOW_WEATHER] ?: false,
             showNetworkSpeed = preferences[PreferencesKeys.SHOW_NETWORK_SPEED] ?: false,
+            showHotspot = preferences[PreferencesKeys.SHOW_HOTSPOT] ?: true,
+            showAlarm = preferences[PreferencesKeys.SHOW_ALARM] ?: true,
             autoDismissNotifications = preferences[PreferencesKeys.AUTO_DISMISS_NOTIFICATIONS] ?: false,
             notificationAutoDismissSeconds = preferences[PreferencesKeys.NOTIFICATION_AUTO_DISMISS_SECONDS] ?: 3,
             persistentCharging = preferences[PreferencesKeys.PERSISTENT_CHARGING] ?: false,
@@ -201,6 +205,8 @@ class SettingsRepository(private val context: Context) {
                 showFps = preferences[PreferencesKeys.SHOW_FPS] ?: false,
                 showWeather = preferences[PreferencesKeys.SHOW_WEATHER] ?: false,
                 showNetworkSpeed = preferences[PreferencesKeys.SHOW_NETWORK_SPEED] ?: false,
+                showHotspot = preferences[PreferencesKeys.SHOW_HOTSPOT] ?: true,
+                showAlarm = preferences[PreferencesKeys.SHOW_ALARM] ?: true,
                 autoDismissNotifications = preferences[PreferencesKeys.AUTO_DISMISS_NOTIFICATIONS] ?: false,
                 notificationAutoDismissSeconds = preferences[PreferencesKeys.NOTIFICATION_AUTO_DISMISS_SECONDS] ?: 3,
                 persistentCharging = preferences[PreferencesKeys.PERSISTENT_CHARGING] ?: false,
@@ -271,6 +277,8 @@ class SettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.SHOW_FPS] = newSettings.showFps
             preferences[PreferencesKeys.SHOW_WEATHER] = newSettings.showWeather
             preferences[PreferencesKeys.SHOW_NETWORK_SPEED] = newSettings.showNetworkSpeed
+            preferences[PreferencesKeys.SHOW_HOTSPOT] = newSettings.showHotspot
+            preferences[PreferencesKeys.SHOW_ALARM] = newSettings.showAlarm
             preferences[PreferencesKeys.AUTO_DISMISS_NOTIFICATIONS] = newSettings.autoDismissNotifications
             preferences[PreferencesKeys.NOTIFICATION_AUTO_DISMISS_SECONDS] = newSettings.notificationAutoDismissSeconds
             preferences[PreferencesKeys.PERSISTENT_CHARGING] = newSettings.persistentCharging

@@ -1,6 +1,9 @@
 package com.droidbubble.app.ui.main
 
 import com.droidbubble.app.island.M3CookieShape
+import com.droidbubble.app.island.M3Cookie6Shape
+import androidx.compose.material.icons.filled.WifiTethering
+import androidx.compose.material.icons.filled.Alarm
 
 
 import android.content.ClipData
@@ -468,7 +471,7 @@ fun MainScreen(
                             .fillMaxSize()
                             .padding(innerPadding),
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         item {
                             UpdateCardItem(
@@ -504,7 +507,7 @@ fun MainScreen(
                                 ) {
                                     Surface(
                                         modifier = Modifier.size(52.dp),
-                                        shape = M3CookieShape,
+                                        shape = M3Cookie6Shape,
                                         color = MaterialTheme.colorScheme.primaryContainer,
                                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                                     ) {
@@ -585,7 +588,7 @@ fun MainScreen(
                 .padding(innerPadding),
             userScrollEnabled = !isDraggingIslandActivity,
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             // SECTION 1: PERMISSIONS (Hides individual item once granted, hides whole section when all granted!)
             if (pendingPermissions.isNotEmpty()) {
@@ -601,7 +604,7 @@ fun MainScreen(
                 item {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         pendingPermissions.forEachIndexed { index, perm ->
                             val position = when {
@@ -680,7 +683,7 @@ fun MainScreen(
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     SettingsCardItem(position = GroupPosition.TOP) {
                         ListItem(
@@ -688,7 +691,16 @@ fun MainScreen(
                             modifier = Modifier.clickable { showDimensionsPage = true },
                             headlineContent = { Text("Island Dimensions", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
-                                Icon(Icons.Default.Straighten, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Surface(
+                                    modifier = Modifier.size(38.dp),
+                                    shape = M3Cookie6Shape,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                ) {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.Straighten, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
                             },
                             trailingContent = {
                                 Icon(
@@ -707,7 +719,16 @@ fun MainScreen(
                             modifier = Modifier.clickable { showAppearancePage = true },
                             headlineContent = { Text("Appearance & Feedback", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
-                                Icon(Icons.Default.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Surface(
+                                    modifier = Modifier.size(38.dp),
+                                    shape = M3Cookie6Shape,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                ) {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.Palette, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
                             },
                             trailingContent = {
                                 Icon(
@@ -726,7 +747,16 @@ fun MainScreen(
                             modifier = Modifier.clickable { showGeneralPage = true },
                             headlineContent = { Text("General", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
-                                Icon(Icons.Default.Tune, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Surface(
+                                    modifier = Modifier.size(38.dp),
+                                    shape = M3Cookie6Shape,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                ) {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
                             },
                             trailingContent = {
                                 Icon(
@@ -782,7 +812,7 @@ fun MainScreen(
 
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     reorderableKeys.forEachIndexed { index, featureKey ->
                         key(featureKey) {
@@ -803,10 +833,12 @@ fun MainScreen(
                                 "PROGRESS" -> settings.showLiveProgress
                                 "RECORDING" -> settings.showScreenRecording
                                 "FLASHLIGHT" -> settings.showFlashlight
+                                "PERSISTENT_CHARGING" -> settings.persistentCharging
+                                "ALARM" -> settings.showAlarm
+                                "HOTSPOT" -> settings.showHotspot
                                 "FPS" -> settings.showFps
                                 "WEATHER" -> settings.showWeather
                                 "NETWORK_SPEED" -> settings.showNetworkSpeed
-                                "PERSISTENT_CHARGING" -> settings.persistentCharging
                                 else -> false
                             }
 
@@ -817,10 +849,12 @@ fun MainScreen(
                                 "PROGRESS" -> "Live Progress & Activities"
                                 "RECORDING" -> "Screen Recording Indicator"
                                 "FLASHLIGHT" -> "Flashlight Indicator"
+                                "PERSISTENT_CHARGING" -> "Persistent Charging"
+                                "ALARM" -> "Upcoming Alarms"
+                                "HOTSPOT" -> "Hotspot Devices"
                                 "FPS" -> "FPS Counter"
                                 "WEATHER" -> "Weather & Temperature"
                                 "NETWORK_SPEED" -> "Wi-Fi & Network Speed"
-                                "PERSISTENT_CHARGING" -> "Persistent Charging"
                                 else -> currentKey
                             }
 
@@ -831,10 +865,12 @@ fun MainScreen(
                                 "PROGRESS" -> Icons.Default.Animation
                                 "RECORDING" -> Icons.Default.Videocam
                                 "FLASHLIGHT" -> Icons.Default.FlashlightOn
+                                "PERSISTENT_CHARGING" -> Icons.Default.Bolt
+                                "ALARM" -> Icons.Default.Alarm
+                                "HOTSPOT" -> Icons.Default.WifiTethering
                                 "FPS" -> Icons.Default.Speed
                                 "WEATHER" -> Icons.Default.WbSunny
                                 "NETWORK_SPEED" -> Icons.Default.Wifi
-                                "PERSISTENT_CHARGING" -> Icons.Default.Bolt
                                 else -> Icons.Default.Apps
                             }
 
@@ -948,6 +984,8 @@ fun MainScreen(
                                                         "WEATHER" -> s.copy(showWeather = checked)
                                                         "NETWORK_SPEED" -> s.copy(showNetworkSpeed = checked)
                                                         "PERSISTENT_CHARGING" -> s.copy(persistentCharging = checked)
+                                                        "ALARM" -> s.copy(showAlarm = checked)
+                                                        "HOTSPOT" -> s.copy(showHotspot = checked)
                                                         else -> s
                                                     }
                                                 }
@@ -972,7 +1010,7 @@ fun MainScreen(
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     SettingsCardItem(position = GroupPosition.TOP, isActive = settings.showBluetooth) {
                         ListItem(
@@ -1102,7 +1140,7 @@ fun MainScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(400.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     items(filteredApps, key = { it.packageName }) { app ->
                         ListItem(
@@ -1154,7 +1192,7 @@ fun MainScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 32.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1294,10 +1332,10 @@ fun MainScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 // Header
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         text = "Send Feedback",
                         style = MaterialTheme.typography.headlineSmall,
@@ -1542,25 +1580,18 @@ fun MainScreen(
 @Composable
 fun SectionHeader(
     title: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     badge: String? = null,
     badgeColor: Color = MaterialTheme.colorScheme.primary
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 12.dp, bottom = 4.dp, start = 4.dp, end = 4.dp),
+            .padding(top = 8.dp, bottom = 2.dp, start = 4.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
@@ -1750,7 +1781,7 @@ fun DimensionsPage(
                 .fillMaxSize()
                 .padding(innerPadding),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             item {
                 val currentCutoutMode = when {
@@ -1775,7 +1806,7 @@ fun DimensionsPage(
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     SettingsCardItem(position = GroupPosition.TOP) {
                         SliderSettingItem(
@@ -2094,7 +2125,7 @@ fun AppearancePage(
             text = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     ISLAND_FONTS.forEach { fontOption ->
                         val isSelected = (settings.fontKey == fontOption.key) || (settings.fontKey.isBlank() && fontOption.key == "DEFAULT")
@@ -2160,12 +2191,12 @@ fun AppearancePage(
                 .fillMaxSize()
                 .padding(innerPadding),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     val isGlass = settings.designLanguage == DesignLanguage.GLASS
                     SettingsCardItem(
@@ -2273,7 +2304,7 @@ fun AppearancePage(
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     val isMaterial3 = settings.designLanguage == DesignLanguage.MATERIAL3
                     val outlineActive = settings.showOutline && !isMaterial3
@@ -2337,7 +2368,7 @@ fun AppearancePage(
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     SettingsCardItem(position = GroupPosition.TOP, isActive = settings.bubbleEffectEnabled) {
                         ListItem(
@@ -2442,7 +2473,7 @@ fun AppearancePage(
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     SettingsCardItem(position = GroupPosition.TOP, isActive = settings.mediaWaveAnimation) {
                         ListItem(
@@ -2532,7 +2563,16 @@ fun AppearancePage(
                         modifier = Modifier.clickable { showFontDialog = true },
                         headlineContent = { Text("Change Font", fontWeight = FontWeight.SemiBold) },
                         leadingContent = {
-                            Icon(Icons.Default.FontDownload, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Surface(
+                                modifier = Modifier.size(38.dp),
+                                shape = M3Cookie6Shape,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.primary
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.FontDownload, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                                }
+                            }
                         },
                         trailingContent = {
                             Icon(
@@ -2627,12 +2667,12 @@ fun GeneralPage(
                 .fillMaxSize()
                 .padding(innerPadding),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     SettingsCardItem(position = GroupPosition.TOP, isActive = settings.autoDismissNotifications) {
                         ListItem(
@@ -2694,7 +2734,16 @@ fun GeneralPage(
                                 )
                             },
                             leadingContent = {
-                                Icon(Icons.Default.WbSunny, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Surface(
+                                    modifier = Modifier.size(38.dp),
+                                    shape = M3Cookie6Shape,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                ) {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.WbSunny, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
                             },
                             trailingContent = {
                                 Icon(

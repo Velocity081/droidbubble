@@ -45,6 +45,24 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
     private var prevTxBytes = -1L
     private var totalSessionBytes = 0L
 
+    // Hotspot & Alarm
+    private var hotspotPollingJob: Job? = null
+    private var alarmRefreshJob: Job? = null
+    private var isHotspotMonitoring = false
+    private var isAlarmMonitoring = false
+
+    private val hotspotReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: android.content.Intent?) {
+            checkHotspotState()
+        }
+    }
+
+    private val alarmReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: android.content.Intent?) {
+            checkNextAlarm()
+        }
+    }
+
     // FPS Tracking via Choreographer
     private var frameCount = 0
     private var lastFpsTimestampNs = 0L
@@ -153,10 +171,24 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
             weatherJob?.cancel()
             weatherJob = null
         }
+
+        if (settings.showHotspot) {
+            startHotspotMonitoring()
+        } else {
+            stopHotspotMonitoring()
+        }
+
+        if (settings.showAlarm) {
+            startAlarmMonitoring()
+        } else {
+            stopAlarmMonitoring()
+        }
     }
 
     fun stop() {
         stopFpsMonitoring()
+        stopHotspotMonitoring()
+        stopAlarmMonitoring()
         networkJob?.cancel()
         weatherJob?.cancel()
         scope.cancel()
@@ -418,6 +450,154 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
             lower.contains("america") -> Triple(40.71, -74.00, "Eastern Time")
             lower.contains("asia") -> Triple(35.67, 139.65, "Tokyo")
             else -> Triple(37.98, 23.72, "Local Weather")
+        }
+    }
+
+    private fun startHotspotMonitoring() {
+        if (isHotspotMonitoring) return
+        isHotspotMonitoring = true
+        runCatching {
+            val filter = android.content.IntentFilter("android.net.wifi.WIFI_AP_STATE_CHANGED")
+            context.registerReceiver(hotspotReceiver, filter)
+        }
+        checkHotspotState()
+    }
+
+    private fun stopHotspotMonitoring() {
+        if (!isHotspotMonitoring) return
+        isHotspotMonitoring = false
+        runCatching { context.unregisterReceiver(hotspotReceiver) }
+        hotspotPollingJob?.cancel()
+        hotspotPollingJob = null
+        IslandStateManager.updateHotspot(IslandStateManager.HotspotInfo(isEnabled = false, connectedDeviceCount = 0))
+    }
+
+    private fun checkHotspotState() {
+        val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
+        val isEnabled = runCatching {
+            val method = wm?.javaClass?.getDeclaredMethod("isWifiApEnabled")
+            method?.isAccessible = true
+            method?.invoke(wm) as? Boolean ?: false
+        }.getOrElse {
+            runCatching {
+                java.net.NetworkInterface.getNetworkInterfaces()?.toList()?.any {
+                    it.isUp && (it.name.startsWith("ap") || it.name.startsWith("wlan1") || it.name.startsWith("softap") || it.name.startsWith("swlan"))
+                } ?: false
+            }.getOrDefault(false)
+        }
+
+        if (isEnabled) {
+            if (hotspotPollingJob == null || !hotspotPollingJob!!.isActive) {
+                startHotspotPolling()
+            }
+        } else {
+            hotspotPollingJob?.cancel()
+            hotspotPollingJob = null
+            IslandStateManager.updateHotspot(IslandStateManager.HotspotInfo(isEnabled = false, connectedDeviceCount = 0))
+        }
+    }
+
+    private fun startHotspotPolling() {
+        hotspotPollingJob?.cancel()
+        hotspotPollingJob = scope.launch(Dispatchers.IO) {
+            while (isActive) {
+                val count = queryConnectedHotspotClients()
+                withContext(Dispatchers.Main) {
+                    IslandStateManager.updateHotspot(
+                        IslandStateManager.HotspotInfo(
+                            isEnabled = true,
+                            connectedDeviceCount = count
+                        )
+                    )
+                }
+                delay(3000L)
+            }
+        }
+    }
+
+    private fun queryConnectedHotspotClients(): Int {
+        return runCatching {
+            val process = Runtime.getRuntime().exec("ip neigh")
+            val reader = BufferedReader(InputStreamReader(process.inputStream))
+            val reachableMacs = mutableSetOf<String>()
+            var line: String?
+            while (reader.readLine().also { line = it } != null) {
+                val l = line?.trim() ?: continue
+                if (!l.contains("FAILED") && !l.contains("INCOMPLETE") && l.contains("lladdr")) {
+                    val parts = l.split(Regex("\\s+"))
+                    val lladdrIdx = parts.indexOf("lladdr")
+                    if (lladdrIdx != -1 && lladdrIdx + 1 < parts.size) {
+                        val mac = parts[lladdrIdx + 1].lowercase()
+                        val isHotspotDev = l.contains("wlan1") || l.contains("ap") || l.contains("softap") || l.contains("swlan")
+                        if (isHotspotDev || (!l.contains("wlan0") && !l.contains("rmnet"))) {
+                            if (l.contains("REACHABLE") || l.contains("DELAY") || l.contains("PROBE")) {
+                                reachableMacs.add(mac)
+                            }
+                        }
+                    }
+                }
+            }
+            process.waitFor()
+            reachableMacs.size
+        }.getOrDefault(0)
+    }
+
+    private fun startAlarmMonitoring() {
+        if (isAlarmMonitoring) return
+        isAlarmMonitoring = true
+        runCatching {
+            val filter = android.content.IntentFilter(android.app.AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED)
+            context.registerReceiver(alarmReceiver, filter)
+        }
+        startAlarmRefreshLoop()
+    }
+
+    private fun stopAlarmMonitoring() {
+        if (!isAlarmMonitoring) return
+        isAlarmMonitoring = false
+        runCatching { context.unregisterReceiver(alarmReceiver) }
+        alarmRefreshJob?.cancel()
+        alarmRefreshJob = null
+        IslandStateManager.updateAlarm(null)
+    }
+
+    private fun checkNextAlarm() {
+        val am = context.getSystemService(Context.ALARM_SERVICE) as? android.app.AlarmManager
+        val nextAlarm = am?.nextAlarmClock
+        if (nextAlarm == null) {
+            IslandStateManager.updateAlarm(null)
+            return
+        }
+
+        val now = System.currentTimeMillis()
+        val triggerTime = nextAlarm.triggerTime
+        val diffMs = triggerTime - now
+        // User requirement: Trigger ONLY when within the next 12 hours
+        if (diffMs in 1L..(12L * 60 * 60 * 1000L)) {
+            val formatted = android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(triggerTime))
+            val hours = diffMs / (1000 * 60 * 60)
+            val mins = (diffMs % (1000 * 60 * 60)) / (1000 * 60)
+            val timeRemaining = if (hours > 0) "in ${hours}h ${mins}m" else "in ${mins}m"
+            IslandStateManager.updateAlarm(
+                IslandStateManager.AlarmInfo(
+                    triggerTimeMs = triggerTime,
+                    formattedTime = formatted,
+                    timeRemainingFormatted = timeRemaining,
+                    showIntent = nextAlarm.showIntent
+                )
+            )
+        } else {
+            IslandStateManager.updateAlarm(null)
+        }
+    }
+
+    private fun startAlarmRefreshLoop() {
+        alarmRefreshJob?.cancel()
+        alarmRefreshJob = scope.launch(Dispatchers.Main) {
+            while (isActive) {
+                checkNextAlarm()
+                delay(30_000L)
+            }
         }
     }
 }

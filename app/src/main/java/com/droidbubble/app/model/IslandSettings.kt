@@ -8,6 +8,8 @@ val DEFAULT_FEATURE_PRIORITIES = listOf(
     "NOTIFICATION",
     "FLASHLIGHT",
     "PERSISTENT_CHARGING",
+    "ALARM",
+    "HOTSPOT",
     "FPS",
     "WEATHER",
     "NETWORK_SPEED"
@@ -54,6 +56,8 @@ data class IslandSettings(
     val showFps: Boolean = false,
     val showWeather: Boolean = false,
     val showNetworkSpeed: Boolean = false,
+    val showHotspot: Boolean = true,
+    val showAlarm: Boolean = true,
     val autoDismissNotifications: Boolean = false,
     val notificationAutoDismissSeconds: Int = 3,
     val persistentCharging: Boolean = false,

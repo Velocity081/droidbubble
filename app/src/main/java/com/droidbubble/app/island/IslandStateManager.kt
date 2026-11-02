@@ -118,6 +118,36 @@ object IslandStateManager {
         }
     }
 
+    data class HotspotInfo(
+        val isEnabled: Boolean = false,
+        val connectedDeviceCount: Int = 0
+    )
+
+    private val _hotspotInfo = MutableStateFlow(HotspotInfo())
+    val hotspotInfo: StateFlow<HotspotInfo> = _hotspotInfo.asStateFlow()
+
+    fun updateHotspot(info: HotspotInfo) {
+        if (_hotspotInfo.value != info) {
+            _hotspotInfo.value = info
+        }
+    }
+
+    data class AlarmInfo(
+        val triggerTimeMs: Long = 0L,
+        val formattedTime: String = "",
+        val timeRemainingFormatted: String = "",
+        val showIntent: android.app.PendingIntent? = null
+    )
+
+    private val _alarmInfo = MutableStateFlow<AlarmInfo?>(null)
+    val alarmInfo: StateFlow<AlarmInfo?> = _alarmInfo.asStateFlow()
+
+    fun updateAlarm(info: AlarmInfo?) {
+        if (_alarmInfo.value != info) {
+            _alarmInfo.value = info
+        }
+    }
+
     private val _expandedPriority = MutableStateFlow<IslandPriority?>(null)
     val expandedPriority: StateFlow<IslandPriority?> = _expandedPriority.asStateFlow()
 
@@ -219,8 +249,14 @@ object IslandStateManager {
     val isRingerModeActive: Boolean
         get() = _activeRingerMode.value != null
 
+    val isHotspotActive: Boolean
+        get() = _hotspotInfo.value.isEnabled && _hotspotInfo.value.connectedDeviceCount > 0
+
+    val isAlarmActive: Boolean
+        get() = _alarmInfo.value != null
+
     val isOccupied: Boolean
-        get() = isCallActive || isRecordingActive || isNotificationActive || isMediaActive || isProgressActive || isChargingActive || isUnlockActive || isBluetoothActive || isFlashlightActive || isRingerModeActive || isAirplaneModeActive
+        get() = isCallActive || isRecordingActive || isNotificationActive || isMediaActive || isProgressActive || isChargingActive || isUnlockActive || isBluetoothActive || isFlashlightActive || isRingerModeActive || isAirplaneModeActive || isHotspotActive || isAlarmActive
 
     // Live priority determination: Call is top priority, then Media, Flashlight, Progress, Screen Recording, and Notification alerts last
     val currentPriority: IslandPriority
