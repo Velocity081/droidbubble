@@ -1446,7 +1446,7 @@ fun IslandOverlayRoot(
                                         } else if (settings.designLanguage == DesignLanguage.MATERIAL3) {
                                             val m3CardBg = lerp(
                                                 Color.Black,
-                                                lerp(Color(0xFF101014), MaterialTheme.colorScheme.primary, 0.14f),
+                                                lerp(Color(0xFF070709), MaterialTheme.colorScheme.primary, 0.06f),
                                                 expandProgress
                                             )
                                             Modifier.background(m3CardBg)
@@ -1740,6 +1740,13 @@ fun IslandOverlayRoot(
                                                 )
                                             )
                                         )
+                                    } else if (settings.designLanguage == DesignLanguage.MATERIAL3) {
+                                        val m3CardBg = lerp(
+                                            Color.Black,
+                                            lerp(Color(0xFF070709), MaterialTheme.colorScheme.primary, 0.06f),
+                                            animatedCard2Alpha.coerceIn(0f, 1f)
+                                        )
+                                        Modifier.background(m3CardBg)
                                     } else {
                                         Modifier.background(Color.Black)
                                     }
@@ -2007,6 +2014,13 @@ fun IslandOverlayRoot(
                                                 )
                                             )
                                         )
+                                    } else if (settings.designLanguage == DesignLanguage.MATERIAL3) {
+                                        val m3CardBg = lerp(
+                                            Color.Black,
+                                            lerp(Color(0xFF070709), MaterialTheme.colorScheme.primary, 0.06f),
+                                            animatedCard3Alpha.coerceIn(0f, 1f)
+                                        )
+                                        Modifier.background(m3CardBg)
                                     } else {
                                         Modifier.background(Color.Black)
                                     }
@@ -3219,17 +3233,21 @@ fun AuxiliaryBubbleContent(
     charging: IslandStateManager.ChargingInfo? = null,
     designLanguage: DesignLanguage = DesignLanguage.DROIDBUBBLE
 ) {
+    val isM3 = designLanguage == DesignLanguage.MATERIAL3
+    val m3Primary = MaterialTheme.colorScheme.primary
+    val m3SurfVariant = MaterialTheme.colorScheme.surfaceVariant
+
     when (priority) {
         IslandPriority.CALL -> {
             Icon(
                 imageVector = Icons.Default.Call,
                 contentDescription = "Active Call",
-                tint = Color(0xFF30D158),
+                tint = if (isM3) m3Primary else Color(0xFF30D158),
                 modifier = Modifier.size(16.dp)
             )
         }
         IslandPriority.SCREEN_RECORDING -> {
-            PulsingRecordingDot()
+            PulsingRecordingDot(dotColor = if (isM3) MaterialTheme.colorScheme.error else Color(0xFFFF3B30))
         }
         IslandPriority.POP_NOTIFICATION -> {
             if (notification?.iconBitmap != null) {
@@ -3238,13 +3256,13 @@ fun AuxiliaryBubbleContent(
                     contentDescription = "Notification Icon",
                     modifier = Modifier
                         .size(18.dp)
-                        .clip(CircleShape)
+                        .clip(if (isM3) M3CookieShape else CircleShape)
                 )
             } else {
                 Icon(
                     imageVector = Icons.Default.Notifications,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = if (isM3) m3Primary else Color.White,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -3260,20 +3278,20 @@ fun AuxiliaryBubbleContent(
                     CircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
                         strokeWidth = 2.dp,
-                        color = Color(0xFFE5E5EA),
-                        trackColor = Color(0xFF2C2C2E)
+                        color = if (isM3) m3Primary else Color(0xFFE5E5EA),
+                        trackColor = if (isM3) m3SurfVariant else Color(0xFF2C2C2E)
                     )
                 } else {
                     CircularProgressIndicator(
                         progress = { pct },
                         modifier = Modifier.size(17.dp),
                         strokeWidth = 2.dp,
-                        color = Color(0xFFE5E5EA),
-                        trackColor = Color(0xFF2C2C2E)
+                        color = if (isM3) m3Primary else Color(0xFFE5E5EA),
+                        trackColor = if (isM3) m3SurfVariant else Color(0xFF2C2C2E)
                     )
                     Text(
                         text = "${(pct * 100).roundToInt()}",
-                        color = Color.White,
+                        color = if (isM3) m3Primary else Color.White,
                         fontSize = 8.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -3282,7 +3300,7 @@ fun AuxiliaryBubbleContent(
         }
         IslandPriority.MEDIA -> {
             val displayArt = media?.albumArt ?: media?.appIcon
-            val vinylShape = if (designLanguage == DesignLanguage.MATERIAL3) M3CookieShape else CircleShape
+            val vinylShape = if (isM3) M3CookieShape else CircleShape
             if (spinningAlbumArt) {
                 CompactSpinningVinylCover(
                     bitmap = displayArt,
@@ -3299,7 +3317,10 @@ fun AuxiliaryBubbleContent(
                         .clip(vinylShape)
                 )
             } else {
-                EqualizerVisualizer(isPlaying = media?.isPlaying == true)
+                EqualizerVisualizer(
+                    isPlaying = media?.isPlaying == true,
+                    barColor = if (isM3) m3Primary else Color(0xFFE5E5EA)
+                )
             }
         }
         IslandPriority.FLASHLIGHT -> {
@@ -3313,8 +3334,8 @@ fun AuxiliaryBubbleContent(
                         .background(
                             Brush.radialGradient(
                                 colors = listOf(
-                                    Color.White.copy(alpha = 0.45f),
-                                    Color.White.copy(alpha = 0.15f),
+                                    (if (isM3) m3Primary else Color.White).copy(alpha = 0.45f),
+                                    (if (isM3) m3Primary else Color.White).copy(alpha = 0.15f),
                                     Color.Transparent
                                 )
                             ),
@@ -3324,7 +3345,7 @@ fun AuxiliaryBubbleContent(
                 Icon(
                     imageVector = Icons.Default.FlashlightOn,
                     contentDescription = "Flashlight",
-                    tint = Color.White,
+                    tint = if (isM3) m3Primary else Color.White,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -3333,7 +3354,7 @@ fun AuxiliaryBubbleContent(
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = "${fpsInfo.fps}",
-                    color = Color(0xFF30D158),
+                    color = if (isM3) m3Primary else Color(0xFF30D158),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -3343,7 +3364,7 @@ fun AuxiliaryBubbleContent(
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = "${weatherInfo.temperatureC}°",
-                    color = Color(0xFFFF9F0A),
+                    color = if (isM3) m3Primary else Color(0xFFFF9F0A),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -3354,7 +3375,7 @@ fun AuxiliaryBubbleContent(
                 Icon(
                     imageVector = Icons.Default.ArrowDownward,
                     contentDescription = null,
-                    tint = Color(0xFF64D2FF),
+                    tint = if (isM3) m3Primary else Color(0xFF64D2FF),
                     modifier = Modifier.size(14.dp)
                 )
             }
@@ -3363,7 +3384,7 @@ fun AuxiliaryBubbleContent(
             val mintChargingGreen = Color(0xFF7CE8A0)
             Text(
                 text = "${charging?.percentage ?: 100}%",
-                color = mintChargingGreen,
+                color = if (isM3) m3Primary else mintChargingGreen,
                 fontSize = 11.5.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -3395,6 +3416,11 @@ fun CompactContent(
     charging: IslandStateManager.ChargingInfo? = null,
     designLanguage: DesignLanguage = DesignLanguage.DROIDBUBBLE
 ) {
+    val isM3 = designLanguage == DesignLanguage.MATERIAL3
+    val m3Primary = MaterialTheme.colorScheme.primary
+    val m3OnSurface = MaterialTheme.colorScheme.onSurface
+    val m3SurfVariant = MaterialTheme.colorScheme.surfaceVariant
+
     val leadingElement = @Composable {
         when (priority) {
             IslandPriority.CHARGING -> {
@@ -3407,7 +3433,7 @@ fun CompactContent(
                 Box(modifier = Modifier.padding(start = if (isCompactDual) 4.dp else 5.dp)) {
                     Text(
                         text = chargingLabel,
-                        color = Color.White,
+                        color = if (isM3) m3OnSurface else Color.White,
                         fontSize = if (isCompactDual) 12.sp else 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -3420,13 +3446,13 @@ fun CompactContent(
                 Icon(
                     imageVector = Icons.Default.Call,
                     contentDescription = "Active Call",
-                    tint = Color(0xFF30D158),
+                    tint = if (isM3) m3Primary else Color(0xFF30D158),
                     modifier = Modifier.size(17.dp)
                 )
             }
 
             IslandPriority.SCREEN_RECORDING -> {
-                PulsingRecordingDot()
+                PulsingRecordingDot(dotColor = if (isM3) MaterialTheme.colorScheme.error else Color(0xFFFF3B30))
             }
 
             IslandPriority.FLASHLIGHT -> {
@@ -3440,8 +3466,8 @@ fun CompactContent(
                             .background(
                                 Brush.radialGradient(
                                     colors = listOf(
-                                        Color.White.copy(alpha = 0.50f),
-                                        Color.White.copy(alpha = 0.16f),
+                                        (if (isM3) m3Primary else Color.White).copy(alpha = 0.50f),
+                                        (if (isM3) m3Primary else Color.White).copy(alpha = 0.16f),
                                         Color.Transparent
                                     )
                                 ),
@@ -3451,7 +3477,7 @@ fun CompactContent(
                     Icon(
                         imageVector = Icons.Default.FlashlightOn,
                         contentDescription = "Flashlight",
-                        tint = Color.White,
+                        tint = if (isM3) m3Primary else Color.White,
                         modifier = Modifier.size(17.dp)
                     )
                 }
@@ -3464,13 +3490,13 @@ fun CompactContent(
                         contentDescription = "Notification Icon",
                         modifier = Modifier
                             .size(20.dp)
-                            .clip(CircleShape)
+                            .clip(if (isM3) M3CookieShape else CircleShape)
                     )
                 } else {
                     Icon(
                         imageVector = Icons.Default.Notifications,
                         contentDescription = null,
-                        tint = Color(0xFFE5E5EA),
+                        tint = if (isM3) m3Primary else Color(0xFFE5E5EA),
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -3483,13 +3509,13 @@ fun CompactContent(
                         contentDescription = "Download Icon",
                         modifier = Modifier
                             .size(18.dp)
-                            .clip(CircleShape)
+                            .clip(if (isM3) M3CookieShape else CircleShape)
                     )
                 } else {
                     Icon(
                         imageVector = Icons.Default.Download,
                         contentDescription = null,
-                        tint = Color(0xFFE5E5EA),
+                        tint = if (isM3) m3Primary else Color(0xFFE5E5EA),
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -3497,8 +3523,8 @@ fun CompactContent(
 
             IslandPriority.MEDIA -> {
                 val displayArt = media?.albumArt ?: media?.appIcon
-                val vinylShape = if (designLanguage == DesignLanguage.MATERIAL3) M3CookieShape else CircleShape
-                val staticMediaShape = if (designLanguage == DesignLanguage.MATERIAL3) M3CookieShape else RoundedCornerShape(5.dp)
+                val vinylShape = if (isM3) M3CookieShape else CircleShape
+                val staticMediaShape = if (isM3) M3CookieShape else RoundedCornerShape(5.dp)
                 if (spinningAlbumArt) {
                     CompactSpinningVinylCover(
                         bitmap = displayArt,
@@ -3519,7 +3545,7 @@ fun CompactContent(
                     Icon(
                         imageVector = Icons.Default.MusicNote,
                         contentDescription = null,
-                        tint = Color(0xFFA1A1AA),
+                        tint = if (isM3) m3Primary else Color(0xFFA1A1AA),
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -3529,7 +3555,7 @@ fun CompactContent(
                 Icon(
                     imageVector = Icons.Default.Speed,
                     contentDescription = "FPS",
-                    tint = if (fpsInfo.isSmooth) Color(0xFF30D158) else Color(0xFFFFD60A),
+                    tint = if (isM3) m3Primary else if (fpsInfo.isSmooth) Color(0xFF30D158) else Color(0xFFFFD60A),
                     modifier = Modifier.size(15.dp)
                 )
             }
@@ -3543,7 +3569,7 @@ fun CompactContent(
                 Icon(
                     imageVector = weatherIcon,
                     contentDescription = "Weather",
-                    tint = Color(0xFFFF9F0A),
+                    tint = if (isM3) m3Primary else Color(0xFFFF9F0A),
                     modifier = Modifier.size(15.dp)
                 )
             }
@@ -3552,7 +3578,7 @@ fun CompactContent(
                 Icon(
                     imageVector = if (networkSpeedInfo.isWifi) Icons.Default.Wifi else Icons.Default.ArrowDownward,
                     contentDescription = "Speed",
-                    tint = Color(0xFF64D2FF),
+                    tint = if (isM3) m3Primary else Color(0xFF64D2FF),
                     modifier = Modifier.size(14.dp)
                 )
             }
@@ -3568,7 +3594,7 @@ fun CompactContent(
                 val seconds = activeCall.durationSeconds % 60
                 Text(
                     text = String.format(Locale.US, "%02d:%02d", minutes, seconds),
-                    color = Color(0xFF30D158),
+                    color = if (isM3) m3Primary else Color(0xFF30D158),
                     fontSize = if (isCompactDual) 10.5.sp else 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
@@ -3581,7 +3607,7 @@ fun CompactContent(
                 val seconds = recording.durationSeconds % 60
                 Text(
                     text = String.format(Locale.US, "%02d:%02d", minutes, seconds),
-                    color = Color(0xFFE5E5EA),
+                    color = if (isM3) m3OnSurface else Color(0xFFE5E5EA),
                     fontSize = if (isCompactDual) 10.5.sp else 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
@@ -3594,7 +3620,7 @@ fun CompactContent(
             IslandPriority.POP_NOTIFICATION -> {
                 Text(
                     text = notification?.title ?: "Notification",
-                    color = Color(0xFFE5E5EA),
+                    color = if (isM3) m3OnSurface else Color(0xFFE5E5EA),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
@@ -3609,13 +3635,13 @@ fun CompactContent(
                     CircularProgressIndicator(
                         modifier = Modifier.size(14.dp),
                         strokeWidth = 2.dp,
-                        color = Color(0xFFE5E5EA),
-                        trackColor = Color(0xFF2C2C2E)
+                        color = if (isM3) m3Primary else Color(0xFFE5E5EA),
+                        trackColor = if (isM3) m3SurfVariant else Color(0xFF2C2C2E)
                     )
                 } else {
                     Text(
                         text = "${(pct * 100).roundToInt()}%",
-                        color = Color(0xFFE5E5EA),
+                        color = if (isM3) m3Primary else Color(0xFFE5E5EA),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -3627,10 +3653,11 @@ fun CompactContent(
             IslandPriority.MEDIA -> {
                 val displayArt = media?.albumArt ?: media?.appIcon
                 val compactAccent = remember(displayArt) { extractMediaAccentColor(displayArt) }
+                val defaultEqTint = if (isM3) m3Primary else Color(0xFFE5E5EA)
                 val compactEqTint = if (compactAccent != Color.Transparent) {
-                    lerp(Color(0xFFE5E5EA), compactAccent, 0.50f)
+                    lerp(defaultEqTint, compactAccent, 0.50f)
                 } else {
-                    Color(0xFFE5E5EA)
+                    defaultEqTint
                 }
                 EqualizerVisualizer(isPlaying = media?.isPlaying == true, barColor = compactEqTint)
             }
@@ -3638,7 +3665,7 @@ fun CompactContent(
             IslandPriority.FPS -> {
                 Text(
                     text = "${fpsInfo.fps}",
-                    color = if (fpsInfo.isSmooth) Color(0xFF30D158) else Color(0xFFFFD60A),
+                    color = if (isM3) m3Primary else if (fpsInfo.isSmooth) Color(0xFF30D158) else Color(0xFFFFD60A),
                     fontSize = 11.5.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -3649,7 +3676,7 @@ fun CompactContent(
             IslandPriority.WEATHER -> {
                 Text(
                     text = "${weatherInfo.temperatureC}°",
-                    color = Color.White,
+                    color = if (isM3) m3OnSurface else Color.White,
                     fontSize = 11.5.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -3660,7 +3687,7 @@ fun CompactContent(
             IslandPriority.NETWORK_SPEED -> {
                 Text(
                     text = "↓ ${networkSpeedInfo.downloadSpeedFormatted}",
-                    color = Color(0xFF64D2FF),
+                    color = if (isM3) m3Primary else Color(0xFF64D2FF),
                     fontSize = 10.5.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -3670,13 +3697,14 @@ fun CompactContent(
 
             IslandPriority.CHARGING -> {
                 val mintChargingGreen = Color(0xFF7CE8A0)
+                val chargingColor = if (isM3) m3Primary else mintChargingGreen
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.End
                 ) {
                     Text(
                         text = "${charging?.percentage ?: 100}%",
-                        color = mintChargingGreen,
+                        color = chargingColor,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -3694,8 +3722,8 @@ fun CompactContent(
                                     .background(
                                         Brush.radialGradient(
                                             listOf(
-                                                mintChargingGreen.copy(alpha = 0.52f),
-                                                mintChargingGreen.copy(alpha = 0.20f),
+                                                chargingColor.copy(alpha = 0.52f),
+                                                chargingColor.copy(alpha = 0.20f),
                                                 Color.Transparent
                                             )
                                         ),
@@ -3705,7 +3733,7 @@ fun CompactContent(
                             Icon(
                                 imageVector = Icons.Default.Bolt,
                                 contentDescription = "Charging",
-                                tint = Color(0xFFB8FFD0),
+                                tint = if (isM3) m3Primary else Color(0xFFB8FFD0),
                                 modifier = Modifier.size(15.dp)
                             )
                         }
@@ -5573,7 +5601,7 @@ fun ExpandedIdleView(onCollapse: () -> Unit) {
 }
 
 @Composable
-fun PulsingRecordingDot(modifier: Modifier = Modifier) {
+fun PulsingRecordingDot(modifier: Modifier = Modifier, dotColor: Color = Color(0xFFFF3B30)) {
     val infiniteTransition = rememberInfiniteTransition(label = "recording_pulse")
     val alpha by infiniteTransition.animateFloat(
         initialValue = 0.35f,
@@ -5590,7 +5618,7 @@ fun PulsingRecordingDot(modifier: Modifier = Modifier) {
             .size(11.dp)
             .scale(1f + (alpha * 0.12f))
             .clip(CircleShape)
-            .background(Color(0xFFFF3B30).copy(alpha = alpha))
+            .background(dotColor.copy(alpha = alpha))
     )
 }
 
