@@ -72,7 +72,7 @@ data class IslandSettings(
     val fontKey: String = "DEFAULT",
     val swapActivitiesOnSwipe: Boolean = true,
     val blurredAlbumArtBackground: Boolean = false,
-    val designLanguage: DesignLanguage = DesignLanguage.DROIDBUBBLE,
+    val designLanguage: DesignLanguage = DesignLanguage.MATERIAL3,
     val glassEnabled: Boolean = false,
     val glassOpacity: Int = 25,
     val mediaWaveAnimation: Boolean = true,
@@ -87,7 +87,8 @@ data class IslandSettings(
     val splitStiffness: Float = 320f,
     val featurePriorities: List<String> = DEFAULT_FEATURE_PRIORITIES,
     val mediaControlAlignment: String = "CENTER",
-    val mediaLayersOrder: List<String> = DEFAULT_MEDIA_LAYERS
+    val mediaLayersOrder: List<String> = DEFAULT_MEDIA_LAYERS,
+    val droidbarEnabled: Boolean = false
 ) {
     val isGlass: Boolean get() = designLanguage == DesignLanguage.GLASS || glassEnabled
     val isMaterial3: Boolean get() = designLanguage == DesignLanguage.MATERIAL3

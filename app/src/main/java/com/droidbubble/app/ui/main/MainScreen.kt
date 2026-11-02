@@ -136,6 +136,11 @@ import com.droidbubble.app.island.ExpandedMediaView
 import com.droidbubble.app.island.IslandStateManager
 import com.droidbubble.app.island.MediaBottomWaveOverlay
 import com.droidbubble.app.island.extractMediaAccentColor
+import com.droidbubble.app.island.createBlurredBitmap
+import com.droidbubble.app.droidbar.MostUsedAppsHelper
+import com.droidbubble.app.droidbar.BarAppInfo
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.material.icons.filled.VerticalSplit
 import com.droidbubble.app.model.MediaInfo
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.AlertDialog
@@ -212,7 +217,8 @@ enum class MainScreenPage {
     DIMENSIONS,
     APPEARANCE,
     GENERAL,
-    MEDIA_PLAYER
+    MEDIA_PLAYER,
+    DROIDBAR
 }
 
 
@@ -351,6 +357,7 @@ fun MainScreen(
     var showAppearancePage by remember { mutableStateOf(false) }
     var showGeneralPage by remember { mutableStateOf(false) }
     var showMediaPlayerPage by remember { mutableStateOf(false) }
+    var showDroidbarPage by remember { mutableStateOf(false) }
     var showFeedbackSheet by remember { mutableStateOf(false) }
     var feedbackType by remember { mutableStateOf(FeedbackType.BUG) }
     var feedbackTitle by remember { mutableStateOf("") }
@@ -373,7 +380,7 @@ fun MainScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.checkPermissions(context)
                 viewModel.refreshUpdateStateOnResume(context)
-                if (settings.isEnabled && PermissionHelper.isOverlayGranted(context)) {
+                if ((settings.isEnabled || settings.droidbarEnabled) && PermissionHelper.isOverlayGranted(context)) {
                     IslandOverlayService.start(context)
                 }
             }
@@ -385,6 +392,7 @@ fun MainScreen(
     }
 
     val currentNavPage = when {
+        showDroidbarPage -> MainScreenPage.DROIDBAR
         showMediaPlayerPage -> MainScreenPage.MEDIA_PLAYER
         showDimensionsPage -> MainScreenPage.DIMENSIONS
         showAppearancePage -> MainScreenPage.APPEARANCE
@@ -451,6 +459,14 @@ fun MainScreen(
                     settings = settings,
                     onUpdateSettings = { viewModel.updateSettings(it) },
                     onBack = { showMediaPlayerPage = false },
+                    modifier = modifier
+                )
+            }
+            MainScreenPage.DROIDBAR -> {
+                DroidbarPage(
+                    settings = settings,
+                    onUpdateSettings = { viewModel.updateSettings(it) },
+                    onBack = { showDroidbarPage = false },
                     modifier = modifier
                 )
             }
@@ -557,6 +573,60 @@ fun MainScreen(
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                                         contentDescription = "Open Droidbubble",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        item {
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(24.dp))
+                                    .clickable { showDroidbarPage = true },
+                                shape = RoundedCornerShape(24.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                tonalElevation = 2.dp
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    Surface(
+                                        modifier = Modifier.size(52.dp),
+                                        shape = M3Cookie6Shape,
+                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.VerticalSplit,
+                                                contentDescription = "Droidbar",
+                                                modifier = Modifier.size(28.dp),
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    }
+
+                                    Text(
+                                        text = "Droidbar",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.weight(1f)
+                                    )
+
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                        contentDescription = "Open Droidbar",
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                         modifier = Modifier.size(18.dp)
                                     )
@@ -2320,9 +2390,9 @@ fun AppearancePage(
                                 horizontalArrangement = Arrangement.spacedBy(3.dp)
                             ) {
                                 val languages = listOf(
+                                    DesignLanguage.MATERIAL3,
                                     DesignLanguage.DROIDBUBBLE,
-                                    DesignLanguage.GLASS,
-                                    DesignLanguage.MATERIAL3
+                                    DesignLanguage.GLASS
                                 )
                                 languages.forEachIndexed { index, lang ->
                                     val isSelected = settings.designLanguage == lang
@@ -2435,65 +2505,53 @@ fun AppearancePage(
                 }
             }
 
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    val isMaterial3 = settings.designLanguage == DesignLanguage.MATERIAL3
-                    val outlineActive = settings.showOutline && !isMaterial3
-                    SettingsCardItem(
-                        position = if (outlineActive) GroupPosition.TOP else GroupPosition.SINGLE,
-                        isActive = outlineActive
+            if (settings.designLanguage != DesignLanguage.MATERIAL3) {
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = {
-                                Text(
-                                    "Island Outline",
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (isMaterial3) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else MaterialTheme.colorScheme.onSurface
-                                )
-                            },
-                            supportingContent = if (isMaterial3) {
-                                {
+                        val outlineActive = settings.showOutline
+                        SettingsCardItem(
+                            position = if (outlineActive) GroupPosition.TOP else GroupPosition.SINGLE,
+                            isActive = outlineActive
+                        ) {
+                            ListItem(
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                headlineContent = {
                                     Text(
-                                        "Unavailable in Material 3",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        "Island Outline",
+                                        fontWeight = FontWeight.SemiBold
                                     )
-                                }
-                            } else null,
-                            leadingContent = {
-                                Icon(
-                                    Icons.Default.CropSquare,
-                                    contentDescription = null,
-                                    tint = if (isMaterial3) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f) else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = if (isMaterial3) false else settings.showOutline,
-                                    enabled = !isMaterial3,
-                                    onCheckedChange = { show ->
-                                        if (!isMaterial3) {
+                                },
+                                leadingContent = {
+                                    Icon(
+                                        Icons.Default.CropSquare,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                },
+                                trailingContent = {
+                                    Switch(
+                                        checked = settings.showOutline,
+                                        onCheckedChange = { show ->
                                             onUpdateSettings { it.copy(showOutline = show) }
                                         }
-                                    }
+                                    )
+                                }
+                            )
+                        }
+
+                        if (outlineActive) {
+                            SettingsCardItem(position = GroupPosition.BOTTOM) {
+                                SliderSettingItem(
+                                    label = "Outline Thickness",
+                                    value = settings.outlineThicknessDp,
+                                    unit = "dp",
+                                    valueRange = 0.5f..4.0f,
+                                    onValueChange = { onUpdateSettings { s -> s.copy(outlineThicknessDp = (it * 10).roundToInt() / 10f) } }
                                 )
                             }
-                        )
-                    }
-
-                    if (outlineActive) {
-                        SettingsCardItem(position = GroupPosition.BOTTOM) {
-                            SliderSettingItem(
-                                label = "Outline Thickness",
-                                value = settings.outlineThicknessDp,
-                                unit = "dp",
-                                valueRange = 0.5f..4.0f,
-                                onValueChange = { onUpdateSettings { s -> s.copy(outlineThicknessDp = (it * 10).roundToInt() / 10f) } }
-                            )
                         }
                     }
                 }
@@ -2677,6 +2735,102 @@ fun GeneralPage(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            // SECTION: DISPLAY & BEHAVIOR
+            item {
+                SectionHeader(title = "Display & Behavior")
+            }
+
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    SettingsCardItem(position = GroupPosition.TOP, isActive = settings.hideOnLockScreen) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Hide on Lock Screen", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.hideOnLockScreen,
+                                    onCheckedChange = { hide ->
+                                        onUpdateSettings { it.copy(hideOnLockScreen = hide) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.showInLandscape) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Show in Landscape", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Icon(Icons.Default.ScreenRotation, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.showInLandscape,
+                                    onCheckedChange = { inLandscape ->
+                                        onUpdateSettings { it.copy(showInLandscape = inLandscape) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.swapActivitiesOnSwipe) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Swipe to Swap Activities", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Icon(Icons.Default.TouchApp, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.swapActivitiesOnSwipe,
+                                    onCheckedChange = { swapEnabled ->
+                                        onUpdateSettings { it.copy(swapActivitiesOnSwipe = swapEnabled) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+
+            // SECTION: INTERACTION & FEEDBACK
+            item {
+                SectionHeader(title = "Interaction & Feedback")
+            }
+
+            item {
+                SettingsCardItem(position = GroupPosition.SINGLE, isActive = settings.hapticsEnabled) {
+                    ListItem(
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        headlineContent = { Text("Haptic Feedback", fontWeight = FontWeight.SemiBold) },
+                        leadingContent = {
+                            Icon(Icons.Default.Vibration, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        },
+                        trailingContent = {
+                            Switch(
+                                checked = settings.hapticsEnabled,
+                                onCheckedChange = { haptics ->
+                                        onUpdateSettings { it.copy(hapticsEnabled = haptics) }
+                                }
+                            )
+                        }
+                    )
+                }
+            }
+
+            // SECTION: NOTIFICATIONS
+            item {
+                SectionHeader(title = "Notifications")
+            }
+
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -2715,7 +2869,7 @@ fun GeneralPage(
                         }
                     }
 
-                    SettingsCardItem(position = GroupPosition.MIDDLE) {
+                    SettingsCardItem(position = GroupPosition.BOTTOM) {
                         SliderSettingItem(
                             label = "Notification Max Lines",
                             value = settings.notificationMaxLines.toFloat(),
@@ -2727,8 +2881,38 @@ fun GeneralPage(
                             }
                         )
                     }
+                }
+            }
 
-                    SettingsCardItem(position = GroupPosition.MIDDLE) {
+            // SECTION: SERVICES & FEATURES
+            item {
+                SectionHeader(title = "Services & Features")
+            }
+
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    SettingsCardItem(position = GroupPosition.TOP, isActive = settings.dismissMediaOnPause) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Dismiss Media on Pause", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Icon(Icons.Default.MusicNote, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.dismissMediaOnPause,
+                                    onCheckedChange = { dismiss ->
+                                        onUpdateSettings { it.copy(dismissMediaOnPause = dismiss) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.BOTTOM) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             modifier = Modifier.clickable {
@@ -2759,96 +2943,6 @@ fun GeneralPage(
                                     contentDescription = "Set Location",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                     modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        )
-                    }
-
-                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.swapActivitiesOnSwipe) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Swipe to Swap Activities", fontWeight = FontWeight.SemiBold) },
-                            leadingContent = {
-                                Icon(Icons.Default.TouchApp, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.swapActivitiesOnSwipe,
-                                    onCheckedChange = { swapEnabled ->
-                                        onUpdateSettings { it.copy(swapActivitiesOnSwipe = swapEnabled) }
-                                    }
-                                )
-                            }
-                        )
-                    }
-
-                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.dismissMediaOnPause) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Dismiss on Pause", fontWeight = FontWeight.SemiBold) },
-                            leadingContent = {
-                                Icon(Icons.Default.MusicNote, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.dismissMediaOnPause,
-                                    onCheckedChange = { dismiss ->
-                                        onUpdateSettings { it.copy(dismissMediaOnPause = dismiss) }
-                                    }
-                                )
-                            }
-                        )
-                    }
-
-                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.hideOnLockScreen) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Hide on Lock Screen", fontWeight = FontWeight.SemiBold) },
-                            leadingContent = {
-                                Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.hideOnLockScreen,
-                                    onCheckedChange = { hide ->
-                                        onUpdateSettings { it.copy(hideOnLockScreen = hide) }
-                                    }
-                                )
-                            }
-                        )
-                    }
-
-                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.hapticsEnabled) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Haptic Feedback", fontWeight = FontWeight.SemiBold) },
-                            leadingContent = {
-                                Icon(Icons.Default.Vibration, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.hapticsEnabled,
-                                    onCheckedChange = { haptics ->
-                                        onUpdateSettings { it.copy(hapticsEnabled = haptics) }
-                                    }
-                                )
-                            }
-                        )
-                    }
-
-                    SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.showInLandscape) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Show in Landscape", fontWeight = FontWeight.SemiBold) },
-                            leadingContent = {
-                                Icon(Icons.Default.ScreenRotation, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.showInLandscape,
-                                    onCheckedChange = { inLandscape ->
-                                        onUpdateSettings { it.copy(showInLandscape = inLandscape) }
-                                    }
                                 )
                             }
                         )
@@ -3060,7 +3154,24 @@ fun MediaPlayerCustomizationPage(
     BackHandler(onBack = onBack)
 
     val activeMedia by IslandStateManager.activeMedia.collectAsState()
-    val dummyMedia = remember {
+    val sampleArt = remember {
+        val b = android.graphics.Bitmap.createBitmap(240, 240, android.graphics.Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(b)
+        val paint = android.graphics.Paint()
+        paint.shader = android.graphics.LinearGradient(
+            0f, 0f, 240f, 240f,
+            intArrayOf(
+                android.graphics.Color.parseColor("#E91E63"),
+                android.graphics.Color.parseColor("#9C27B0"),
+                android.graphics.Color.parseColor("#3F51B5")
+            ),
+            null,
+            android.graphics.Shader.TileMode.CLAMP
+        )
+        canvas.drawRect(0f, 0f, 240f, 240f, paint)
+        b
+    }
+    val dummyMedia = remember(sampleArt) {
         MediaInfo(
             packageName = "com.spotify.music",
             title = "Starboy",
@@ -3068,12 +3179,15 @@ fun MediaPlayerCustomizationPage(
             isPlaying = true,
             durationMs = 230000L,
             positionMs = 85000L,
-            albumArt = null
+            albumArt = sampleArt
         )
     }
     val currentMedia = activeMedia ?: dummyMedia
-    val mediaArt = currentMedia.albumArt ?: currentMedia.appIcon
+    val mediaArt = currentMedia.albumArt ?: currentMedia.appIcon ?: sampleArt
     val mediaAccentColor = remember(mediaArt) { extractMediaAccentColor(mediaArt) }
+    val blurredMediaArt = remember(mediaArt, settings.blurredAlbumArtBackground) {
+        if (settings.blurredAlbumArtBackground && mediaArt != null) createBlurredBitmap(mediaArt) else null
+    }
 
     Scaffold(
         modifier = modifier,
@@ -3126,6 +3240,26 @@ fun MediaPlayerCustomizationPage(
                         .clip(previewShape)
                         .background(cardBg)
                 ) {
+                    if (settings.blurredAlbumArtBackground && mediaArt != null) {
+                        Image(
+                            bitmap = (blurredMediaArt ?: mediaArt).asImageBitmap(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    scaleX = 1.35f
+                                    scaleY = 1.35f
+                                    alpha = 0.78f
+                                }
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.38f))
+                        )
+                    }
+
                     if (settings.mediaWaveAnimation) {
                         MediaBottomWaveOverlay(
                             accentColor = if (mediaAccentColor != Color.Transparent) mediaAccentColor else Color(0xFF64D2FF),
@@ -3389,6 +3523,226 @@ fun MediaPlayerCustomizationPage(
                                 )
                             }
                         )
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DroidbarPage(
+    settings: IslandSettings,
+    onUpdateSettings: ((IslandSettings) -> IslandSettings) -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    BackHandler(onBack = onBack)
+    val context = LocalContext.current
+    var hasUsagePermission by remember { mutableStateOf(MostUsedAppsHelper.hasUsageStatsPermission(context)) }
+    var apps by remember { mutableStateOf<List<BarAppInfo>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        hasUsagePermission = MostUsedAppsHelper.hasUsageStatsPermission(context)
+        apps = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            MostUsedAppsHelper.getMostUsedApps(context, limit = 6)
+        }
+    }
+
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            TopAppBar(
+                title = { Text("Droidbar", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
+            )
+        }
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // MASTER ENABLE SWITCH
+            item {
+                SettingsCardItem(position = GroupPosition.SINGLE, isActive = settings.droidbarEnabled) {
+                    ListItem(
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        headlineContent = { Text("Enable Droidbar", fontWeight = FontWeight.SemiBold) },
+                        supportingContent = {
+                            Text(
+                                "Minimalist edge bar on the right side for fast access to your top apps",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        leadingContent = {
+                            Surface(
+                                modifier = Modifier.size(38.dp),
+                                shape = M3Cookie6Shape,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.primary
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.VerticalSplit, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        },
+                        trailingContent = {
+                            Switch(
+                                checked = settings.droidbarEnabled,
+                                onCheckedChange = { enabled ->
+                                    onUpdateSettings { it.copy(droidbarEnabled = enabled) }
+                                    if (enabled && PermissionHelper.isOverlayGranted(context)) {
+                                        IslandOverlayService.start(context)
+                                    }
+                                }
+                            )
+                        }
+                    )
+                }
+            }
+
+            // OVERLAY PERMISSION WARNING IF NEEDED
+            if (!PermissionHelper.isOverlayGranted(context)) {
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+                    ) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Overlay Permission Required", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error) },
+                            supportingContent = { Text("Required to display the edge bar over other apps", style = MaterialTheme.typography.bodySmall) },
+                            trailingContent = {
+                                Button(
+                                    onClick = {
+                                        runCatching {
+                                            context.startActivity(
+                                                Intent(
+                                                    android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                                    android.net.Uri.parse("package:${context.packageName}")
+                                                ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                                            )
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text("Grant", fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+
+            // USAGE ACCESS NOTICE IF NOT GRANTED
+            if (!hasUsagePermission) {
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
+                    ) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Usage Access", fontWeight = FontWeight.SemiBold) },
+                            supportingContent = {
+                                Text(
+                                    "Optional: Grant Usage Access so Android accurately ranks your 6 most used apps. Otherwise, top launcher apps are displayed.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            trailingContent = {
+                                TextButton(
+                                    onClick = {
+                                        runCatching {
+                                            context.startActivity(
+                                                Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+                                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                }
+                                            )
+                                        }
+                                    }
+                                ) {
+                                    Text("Grant")
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+
+            // SECTION: APPS IN DROIDBAR
+            item {
+                SectionHeader(title = "6 Most Used Apps")
+            }
+
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    if (apps.isEmpty()) {
+                        SettingsCardItem(position = GroupPosition.SINGLE) {
+                            ListItem(
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                headlineContent = { Text("Loading apps...", style = MaterialTheme.typography.bodyMedium) }
+                            )
+                        }
+                    } else {
+                        apps.forEachIndexed { index, app ->
+                            val position = when {
+                                apps.size == 1 -> GroupPosition.SINGLE
+                                index == 0 -> GroupPosition.TOP
+                                index == apps.size - 1 -> GroupPosition.BOTTOM
+                                else -> GroupPosition.MIDDLE
+                            }
+                            SettingsCardItem(position = position) {
+                                ListItem(
+                                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                    headlineContent = { Text(app.label, fontWeight = FontWeight.SemiBold) },
+                                    supportingContent = { Text(app.packageName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    leadingContent = {
+                                        if (app.iconBitmap != null) {
+                                            Image(
+                                                bitmap = app.iconBitmap.asImageBitmap(),
+                                                contentDescription = app.label,
+                                                modifier = Modifier
+                                                    .size(38.dp)
+                                                    .clip(RoundedCornerShape(8.dp))
+                                            )
+                                        } else {
+                                            Surface(
+                                                modifier = Modifier.size(38.dp),
+                                                shape = RoundedCornerShape(8.dp),
+                                                color = MaterialTheme.colorScheme.surfaceVariant
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    Icon(Icons.Default.Apps, contentDescription = null, modifier = Modifier.size(20.dp))
+                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }

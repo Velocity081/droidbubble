@@ -54,6 +54,7 @@ import com.droidbubble.app.MainActivity
 import com.droidbubble.app.R
 import com.droidbubble.app.data.SettingsRepository
 import com.droidbubble.app.island.IslandOverlayRoot
+import com.droidbubble.app.droidbar.DroidbarOverlay
 import com.droidbubble.app.island.IslandStateManager
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
@@ -111,6 +112,8 @@ class IslandOverlayService : Service() {
     private var windowManager: WindowManager? = null
     private var composeView: ComposeView? = null
     private var layoutParams: WindowManager.LayoutParams? = null
+    private var droidbarView: ComposeView? = null
+    private var droidbarParams: WindowManager.LayoutParams? = null
 
     private val lifecycleOwner = CustomLifecycleOwner()
     private var currentSettings = IslandSettings()
@@ -800,6 +803,12 @@ class IslandOverlayService : Service() {
                 } else {
                     updateWindowState(IslandStateManager.isExpanded.value)
                 }
+
+                if (settings.droidbarEnabled && com.droidbubble.app.ui.main.PermissionHelper.isOverlayGranted(this@IslandOverlayService)) {
+                    initDroidbar()
+                } else {
+                    removeDroidbar()
+                }
             }
         }
     }
@@ -1007,7 +1016,111 @@ class IslandOverlayService : Service() {
         composeView = null
     }
 
-    override fun onDestroy() {
+        private fun initDroidbar() {
+        if (droidbarView != null) return
+        val wm = windowManager ?: (getSystemService(Context.WINDOW_SERVICE) as? WindowManager) ?: return
+        windowManager = wm
+
+        val density = resources.displayMetrics.density
+        val screenHeight = resources.displayMetrics.heightPixels
+        val initialWidth = (28 * density).toInt()
+        val initialHeight = (72 * density).toInt()
+        val initialY = (screenHeight * 0.45f).toInt()
+
+        val flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+
+        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        } else {
+            @Suppress("DEPRECATION")
+            WindowManager.LayoutParams.TYPE_PHONE
+        }
+
+        val params = WindowManager.LayoutParams(
+            initialWidth,
+            initialHeight,
+            type,
+            flags,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.END
+            x = 0
+            y = initialY
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+        }
+        droidbarParams = params
+
+        val v = ComposeView(this).apply {
+            setViewTreeLifecycleOwner(lifecycleOwner)
+            setViewTreeSavedStateRegistryOwner(lifecycleOwner)
+            setContent {
+                DroidbarOverlay(
+                    context = this@IslandOverlayService,
+                    onExpandChanged = { isExpanded ->
+                        updateDroidbarLayoutParams(isExpanded)
+                    }
+                )
+            }
+        }
+        droidbarView = v
+        try {
+            wm.addView(v, params)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun updateDroidbarLayoutParams(isExpanded: Boolean) {
+        val params = droidbarParams ?: return
+        val v = droidbarView ?: return
+        val wm = windowManager ?: return
+        val density = resources.displayMetrics.density
+        val screenHeight = resources.displayMetrics.heightPixels
+
+        if (isExpanded) {
+            params.width = WindowManager.LayoutParams.MATCH_PARENT
+            params.height = WindowManager.LayoutParams.MATCH_PARENT
+            params.x = 0
+            params.y = 0
+            params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        } else {
+            params.width = (28 * density).toInt()
+            params.height = (72 * density).toInt()
+            params.x = 0
+            params.y = (screenHeight * 0.45f).toInt()
+            params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        }
+        try {
+            wm.updateViewLayout(v, params)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun removeDroidbar() {
+        droidbarView?.let { v ->
+            try {
+                windowManager?.removeView(v)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        droidbarView = null
+        droidbarParams = null
+    }
+
+override fun onDestroy() {
+        removeDroidbar()
         super.onDestroy()
         if (serviceInstance === this) {
             serviceInstance = null

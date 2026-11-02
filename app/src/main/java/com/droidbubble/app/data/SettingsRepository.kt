@@ -81,6 +81,7 @@ class SettingsRepository(private val context: Context) {
         val FEATURE_PRIORITIES = stringPreferencesKey("feature_priorities")
         val MEDIA_CONTROL_ALIGNMENT = stringPreferencesKey("media_control_alignment")
         val MEDIA_LAYERS_ORDER = stringPreferencesKey("media_layers_order")
+        val DROIDBAR_ENABLED = booleanPreferencesKey("droidbar_enabled")
     }
 
     val settingsFlow: Flow<IslandSettings> = context.dataStore.data.map { preferences ->
@@ -139,7 +140,7 @@ class SettingsRepository(private val context: Context) {
             blurredAlbumArtBackground = preferences[PreferencesKeys.BLURRED_ALBUM_ART_BACKGROUND] ?: false,
             designLanguage = preferences[PreferencesKeys.DESIGN_LANGUAGE]?.let {
                 try { com.droidbubble.app.model.DesignLanguage.valueOf(it) } catch (_: Exception) { null }
-            } ?: if (preferences[PreferencesKeys.GLASS_ENABLED] == true) com.droidbubble.app.model.DesignLanguage.GLASS else com.droidbubble.app.model.DesignLanguage.DROIDBUBBLE,
+            } ?: if (preferences[PreferencesKeys.GLASS_ENABLED] == true) com.droidbubble.app.model.DesignLanguage.GLASS else com.droidbubble.app.model.DesignLanguage.MATERIAL3,
             glassEnabled = preferences[PreferencesKeys.GLASS_ENABLED] ?: false,
             glassOpacity = preferences[PreferencesKeys.GLASS_OPACITY] ?: 25,
             mediaWaveAnimation = preferences[PreferencesKeys.MEDIA_WAVE_ANIMATION] ?: true,
@@ -168,7 +169,8 @@ class SettingsRepository(private val context: Context) {
                 ?.let { list ->
                     val set = list.toSet()
                     list.filter { it in DEFAULT_MEDIA_LAYERS } + DEFAULT_MEDIA_LAYERS.filter { it !in set }
-                } ?: DEFAULT_MEDIA_LAYERS
+                } ?: DEFAULT_MEDIA_LAYERS,
+            droidbarEnabled = preferences[PreferencesKeys.DROIDBAR_ENABLED] ?: false
         )
     }
 
@@ -229,7 +231,7 @@ class SettingsRepository(private val context: Context) {
             blurredAlbumArtBackground = preferences[PreferencesKeys.BLURRED_ALBUM_ART_BACKGROUND] ?: false,
             designLanguage = preferences[PreferencesKeys.DESIGN_LANGUAGE]?.let {
                 try { com.droidbubble.app.model.DesignLanguage.valueOf(it) } catch (_: Exception) { null }
-            } ?: if (preferences[PreferencesKeys.GLASS_ENABLED] == true) com.droidbubble.app.model.DesignLanguage.GLASS else com.droidbubble.app.model.DesignLanguage.DROIDBUBBLE,
+            } ?: if (preferences[PreferencesKeys.GLASS_ENABLED] == true) com.droidbubble.app.model.DesignLanguage.GLASS else com.droidbubble.app.model.DesignLanguage.MATERIAL3,
             glassEnabled = preferences[PreferencesKeys.GLASS_ENABLED] ?: false,
             glassOpacity = preferences[PreferencesKeys.GLASS_OPACITY] ?: 25,
             mediaWaveAnimation = preferences[PreferencesKeys.MEDIA_WAVE_ANIMATION] ?: true,
@@ -258,7 +260,8 @@ class SettingsRepository(private val context: Context) {
                     ?.let { list ->
                         val set = list.toSet()
                         list.filter { it in DEFAULT_MEDIA_LAYERS } + DEFAULT_MEDIA_LAYERS.filter { it !in set }
-                    } ?: DEFAULT_MEDIA_LAYERS
+                    } ?: DEFAULT_MEDIA_LAYERS,
+                droidbarEnabled = preferences[PreferencesKeys.DROIDBAR_ENABLED] ?: false
             )
 
             val newSettings = update(current)
@@ -324,6 +327,7 @@ class SettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.FEATURE_PRIORITIES] = newSettings.featurePriorities.joinToString(",")
             preferences[PreferencesKeys.MEDIA_CONTROL_ALIGNMENT] = newSettings.mediaControlAlignment
             preferences[PreferencesKeys.MEDIA_LAYERS_ORDER] = newSettings.mediaLayersOrder.joinToString(",")
+            preferences[PreferencesKeys.DROIDBAR_ENABLED] = newSettings.droidbarEnabled
         }
     }
 }
