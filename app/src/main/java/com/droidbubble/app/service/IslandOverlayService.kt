@@ -1016,7 +1016,8 @@ class IslandOverlayService : Service() {
         composeView = null
     }
 
-        private fun initDroidbar() {
+        @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+    private fun initDroidbar() {
         if (droidbarView != null) return
         val wm = windowManager ?: (getSystemService(Context.WINDOW_SERVICE) as? WindowManager) ?: return
         windowManager = wm
@@ -1061,13 +1062,24 @@ class IslandOverlayService : Service() {
             setViewTreeSavedStateRegistryOwner(lifecycleOwner)
             setContent {
                 val liveSettings by settingsRepository.settingsFlow.collectAsState(initial = currentSettings)
-                DroidbarOverlay(
-                    context = this@IslandOverlayService,
-                    settings = liveSettings,
-                    onExpandChanged = { isExpanded ->
-                        updateDroidbarLayoutParams(isExpanded)
+                val overlayColorScheme = remember {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        dynamicDarkColorScheme(this@IslandOverlayService)
+                    } else {
+                        darkColorScheme()
                     }
-                )
+                }
+                MaterialExpressiveTheme(
+                    colorScheme = overlayColorScheme
+                ) {
+                    DroidbarOverlay(
+                        context = this@IslandOverlayService,
+                        settings = liveSettings,
+                        onExpandChanged = { isExpanded ->
+                            updateDroidbarLayoutParams(isExpanded)
+                        }
+                    )
+                }
             }
         }
         droidbarView = v

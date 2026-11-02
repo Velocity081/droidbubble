@@ -1,6 +1,5 @@
 package com.droidbubble.app.droidbar
 
-import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -31,11 +30,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.FlashlightOff
 import androidx.compose.material.icons.filled.FlashlightOn
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsActive
-import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -56,6 +55,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import com.droidbubble.app.island.IslandStateManager
+import com.droidbubble.app.island.M3Cookie6Shape
 import com.droidbubble.app.model.IslandSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -245,59 +245,73 @@ fun DroidbarOverlay(
                         verticalArrangement = Arrangement.SpaceEvenly,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Flashlight toggle control
+                        // Flashlight toggle control (Material 3 Expressive Cookie Shape, subtle tonal palette)
                         if (settings.droidbarShowFlashlight) {
                             val isFlashlightActive = isFlashlightOn
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(
-                                        if (isFlashlightActive) Color(0xFFFFD600).copy(alpha = 0.28f)
-                                        else Color.White.copy(alpha = 0.12f)
-                                    )
-                                    .clickable {
-                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                        toggleFlashlight(context)
-                                    },
-                                contentAlignment = Alignment.Center
+                            val containerColor = if (isFlashlightActive) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                Color.White.copy(alpha = 0.10f)
+                            }
+                            val contentColor = if (isFlashlightActive) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                Color.White.copy(alpha = 0.85f)
+                            }
+
+                            Surface(
+                                modifier = Modifier.size(44.dp),
+                                shape = M3Cookie6Shape,
+                                color = containerColor,
+                                contentColor = contentColor,
+                                onClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    toggleFlashlight(context)
+                                }
                             ) {
-                                Icon(
-                                    imageVector = if (isFlashlightActive) Icons.Default.FlashlightOn else Icons.Default.FlashlightOff,
-                                    contentDescription = "Flashlight",
-                                    modifier = Modifier.size(22.dp),
-                                    tint = if (isFlashlightActive) Color(0xFFFFD600) else Color.White
-                                )
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = if (isFlashlightActive) Icons.Default.FlashlightOn else Icons.Default.FlashlightOff,
+                                        contentDescription = "Flashlight",
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
                             }
                         }
 
-                        // Ring mode toggle control
+                        // Ring mode toggle control: ONLY Ring and Vibrate (No Silent mode)
                         if (settings.droidbarShowRingMode) {
-                            val (ringerIcon, ringerTint) = when (currentRingerMode) {
-                                AudioManager.RINGER_MODE_NORMAL -> Pair(Icons.Default.NotificationsActive, Color.White)
-                                AudioManager.RINGER_MODE_VIBRATE -> Pair(Icons.Default.Vibration, Color(0xFFFF9800))
-                                AudioManager.RINGER_MODE_SILENT -> Pair(Icons.Default.NotificationsOff, Color(0xFFEF5350))
-                                else -> Pair(Icons.Default.Notifications, Color.White)
+                            val isVibrate = currentRingerMode == AudioManager.RINGER_MODE_VIBRATE
+                            val containerColor = if (isVibrate) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                Color.White.copy(alpha = 0.10f)
                             }
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(Color.White.copy(alpha = 0.12f))
-                                    .clickable {
-                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                        cycleRingerMode(context) { newMode ->
-                                            currentRingerMode = newMode
-                                        }
-                                    },
-                                contentAlignment = Alignment.Center
+                            val contentColor = if (isVibrate) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                Color.White.copy(alpha = 0.85f)
+                            }
+
+                            Surface(
+                                modifier = Modifier.size(44.dp),
+                                shape = M3Cookie6Shape,
+                                color = containerColor,
+                                contentColor = contentColor,
+                                onClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    toggleRingVibrateMode(context) { newMode ->
+                                        currentRingerMode = newMode
+                                    }
+                                }
                             ) {
-                                Icon(
-                                    imageVector = ringerIcon,
-                                    contentDescription = "Ring Mode",
-                                    modifier = Modifier.size(22.dp),
-                                    tint = ringerTint
-                                )
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = if (isVibrate) Icons.Default.Vibration else Icons.Default.NotificationsActive,
+                                        contentDescription = if (isVibrate) "Vibrate" else "Ring",
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
                             }
                         }
 
@@ -363,16 +377,16 @@ private fun toggleFlashlight(context: Context) {
     } catch (_: Exception) {}
 }
 
-private fun cycleRingerMode(context: Context, onModeChanged: (Int) -> Unit) {
+/**
+ * Toggles ONLY between Normal (Ring) and Vibrate modes. Never enters Silent mode.
+ */
+private fun toggleRingVibrateMode(context: Context, onModeChanged: (Int) -> Unit) {
     val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
-    val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-    val hasDnd = nm?.isNotificationPolicyAccessGranted == true
     val current = am.ringerMode
-    val next = when (current) {
-        AudioManager.RINGER_MODE_NORMAL -> AudioManager.RINGER_MODE_VIBRATE
-        AudioManager.RINGER_MODE_VIBRATE -> if (hasDnd) AudioManager.RINGER_MODE_SILENT else AudioManager.RINGER_MODE_NORMAL
-        AudioManager.RINGER_MODE_SILENT -> AudioManager.RINGER_MODE_NORMAL
-        else -> AudioManager.RINGER_MODE_NORMAL
+    val next = if (current == AudioManager.RINGER_MODE_VIBRATE) {
+        AudioManager.RINGER_MODE_NORMAL
+    } else {
+        AudioManager.RINGER_MODE_VIBRATE
     }
     runCatching {
         am.ringerMode = next
