@@ -1023,9 +1023,9 @@ class IslandOverlayService : Service() {
 
         val density = resources.displayMetrics.density
         val screenHeight = resources.displayMetrics.heightPixels
-        val initialWidth = (28 * density).toInt()
+        val initialWidth = (32 * density).toInt()
         val initialHeight = (72 * density).toInt()
-        val initialY = (screenHeight * 0.45f).toInt()
+        val initialY = (screenHeight / 2) - (initialHeight / 2)
 
         val flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
@@ -1091,10 +1091,10 @@ class IslandOverlayService : Service() {
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
         } else {
-            params.width = (28 * density).toInt()
+            params.width = (32 * density).toInt()
             params.height = (72 * density).toInt()
             params.x = 0
-            params.y = (screenHeight * 0.45f).toInt()
+            params.y = (screenHeight / 2) - (params.height / 2)
             params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
