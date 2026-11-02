@@ -28,7 +28,7 @@ fun DroidbubbleTheme(
   darkTheme: Boolean = isSystemInDarkTheme(),
   // Dynamic color is available on Android 12+
   dynamicColor: Boolean = true,
-  fontFamily: androidx.compose.ui.text.font.FontFamily = androidx.compose.ui.text.font.FontFamily.Default,
+  fontFamily: androidx.compose.ui.text.font.FontFamily = GoogleSansFlex,
   content: @Composable () -> Unit,
 ) {
   val colorScheme =

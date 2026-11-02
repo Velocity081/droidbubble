@@ -49,11 +49,7 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            val settings by viewModel.settings.collectAsState()
-            val fontFamily = remember(settings.fontKey) {
-                com.droidbubble.app.theme.getIslandFontFamily(settings.fontKey)
-            }
-            DroidbubbleTheme(fontFamily = fontFamily) {
+            DroidbubbleTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
