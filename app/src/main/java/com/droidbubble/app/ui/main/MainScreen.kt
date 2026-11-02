@@ -1646,6 +1646,30 @@ fun getGroupedShape(position: GroupPosition): RoundedCornerShape {
     }
 }
 
+fun getHorizontalSegmentShape(index: Int, total: Int, isSelected: Boolean): RoundedCornerShape {
+    val outerRadius = 22.dp
+    val innerRadius = 4.dp
+    return if (isSelected) {
+        RoundedCornerShape(outerRadius)
+    } else {
+        when {
+            index == 0 -> RoundedCornerShape(
+                topStart = outerRadius,
+                bottomStart = outerRadius,
+                topEnd = innerRadius,
+                bottomEnd = innerRadius
+            )
+            index == total - 1 -> RoundedCornerShape(
+                topStart = innerRadius,
+                bottomStart = innerRadius,
+                topEnd = outerRadius,
+                bottomEnd = outerRadius
+            )
+            else -> RoundedCornerShape(innerRadius)
+        }
+    }
+}
+
 @Composable
 fun SettingsCardItem(
     position: GroupPosition,
@@ -2237,27 +2261,42 @@ fun AppearancePage(
                                 }
                             )
 
-                            // 3-way Segmented Control
+                            // 3-way Segmented Control (3 separate buttons with list-item style rounding)
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 4.dp)
-                                    .background(
-                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    .padding(4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
                             ) {
-                                DesignLanguage.values().forEach { lang ->
+                                val languages = listOf(
+                                    DesignLanguage.DROIDBUBBLE,
+                                    DesignLanguage.GLASS,
+                                    DesignLanguage.MATERIAL3
+                                )
+                                languages.forEachIndexed { index, lang ->
                                     val isSelected = settings.designLanguage == lang
-                                    Box(
+                                    val shape = getHorizontalSegmentShape(index, languages.size, isSelected)
+                                    val backgroundColor by animateColorAsState(
+                                        targetValue = if (isSelected) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                        },
+                                        label = "lang_bg"
+                                    )
+                                    val contentColor by animateColorAsState(
+                                        targetValue = if (isSelected) {
+                                            MaterialTheme.colorScheme.onPrimary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
+                                        label = "lang_text"
+                                    )
+
+                                    Surface(
                                         modifier = Modifier
                                             .weight(1f)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(
-                                                if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
-                                            )
+                                            .clip(shape)
                                             .clickable {
                                                 onUpdateSettings {
                                                     it.copy(
@@ -2266,21 +2305,28 @@ fun AppearancePage(
                                                         showOutline = if (lang == DesignLanguage.MATERIAL3) false else it.showOutline
                                                     )
                                                 }
-                                            }
-                                            .padding(vertical = 10.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = when (lang) {
-                                                DesignLanguage.DROIDBUBBLE -> "Droidbubble"
-                                                DesignLanguage.GLASS -> "Glass"
-                                                DesignLanguage.MATERIAL3 -> "Material 3"
                                             },
-                                            style = MaterialTheme.typography.labelMedium,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1
-                                        )
+                                        shape = shape,
+                                        color = backgroundColor
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 12.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = when (lang) {
+                                                    DesignLanguage.DROIDBUBBLE -> "Droidbubble"
+                                                    DesignLanguage.GLASS -> "Glass"
+                                                    DesignLanguage.MATERIAL3 -> "Material 3"
+                                                },
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                color = contentColor,
+                                                maxLines = 1
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -2298,6 +2344,49 @@ fun AppearancePage(
                             )
                         }
                     }
+                }
+            }
+
+            // Font Picker moved directly below Design Language
+            item {
+                SectionHeader(
+                    title = "Island Font"
+                )
+            }
+
+            item {
+                SettingsCardItem(position = GroupPosition.SINGLE) {
+                    ListItem(
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        modifier = Modifier.clickable { showFontDialog = true },
+                        headlineContent = { Text("Change Font", fontWeight = FontWeight.SemiBold) },
+                        supportingContent = {
+                            val currentFontName = remember(settings.fontKey) {
+                                ISLAND_FONTS.firstOrNull { it.key == settings.fontKey }?.name ?: "System Default"
+                            }
+                            Text(currentFontName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        },
+                        leadingContent = {
+                            Surface(
+                                modifier = Modifier.size(38.dp),
+                                shape = M3Cookie6Shape,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.primary
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.FontDownload, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        },
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                contentDescription = "Change Font",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    )
                 }
             }
 
@@ -2407,7 +2496,7 @@ fun AppearancePage(
                         )
                     }
 
-                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.alwaysShowPill) {
+                    SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.alwaysShowPill) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             headlineContent = { Text("Always Show Pill", fontWeight = FontWeight.SemiBold) },
@@ -2419,42 +2508,6 @@ fun AppearancePage(
                                     checked = settings.alwaysShowPill,
                                     onCheckedChange = { alwaysShow ->
                                         onUpdateSettings { it.copy(alwaysShowPill = alwaysShow) }
-                                    }
-                                )
-                            }
-                        )
-                    }
-
-                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.hapticsEnabled) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Haptic Feedback", fontWeight = FontWeight.SemiBold) },
-                            leadingContent = {
-                                Icon(Icons.Default.Vibration, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.hapticsEnabled,
-                                    onCheckedChange = { haptics ->
-                                        onUpdateSettings { it.copy(hapticsEnabled = haptics) }
-                                    }
-                                )
-                            }
-                        )
-                    }
-
-                    SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.showInLandscape) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Show in Landscape", fontWeight = FontWeight.SemiBold) },
-                            leadingContent = {
-                                Icon(Icons.Default.ScreenRotation, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.showInLandscape,
-                                    onCheckedChange = { inLandscape ->
-                                        onUpdateSettings { it.copy(showInLandscape = inLandscape) }
                                     }
                                 )
                             }
@@ -2549,42 +2602,7 @@ fun AppearancePage(
                 }
             }
 
-            item {
-                SectionHeader(
-                    title = "Island Font",
-                    icon = Icons.Default.FontDownload
-                )
-            }
 
-            item {
-                SettingsCardItem(position = GroupPosition.SINGLE) {
-                    ListItem(
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        modifier = Modifier.clickable { showFontDialog = true },
-                        headlineContent = { Text("Change Font", fontWeight = FontWeight.SemiBold) },
-                        leadingContent = {
-                            Surface(
-                                modifier = Modifier.size(38.dp),
-                                shape = M3Cookie6Shape,
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.primary
-                            ) {
-                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.FontDownload, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-                                }
-                            }
-                        },
-                        trailingContent = {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                contentDescription = "Change Font",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    )
-                }
-            }
 
             item {
                 AnimationCurveEditor(settings = settings, onUpdateSettings = onUpdateSettings)
@@ -2792,7 +2810,7 @@ fun GeneralPage(
                         )
                     }
 
-                    SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.hideOnLockScreen) {
+                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.hideOnLockScreen) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             headlineContent = { Text("Hide on Lock Screen", fontWeight = FontWeight.SemiBold) },
@@ -2804,6 +2822,42 @@ fun GeneralPage(
                                     checked = settings.hideOnLockScreen,
                                     onCheckedChange = { hide ->
                                         onUpdateSettings { it.copy(hideOnLockScreen = hide) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.hapticsEnabled) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Haptic Feedback", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Icon(Icons.Default.Vibration, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.hapticsEnabled,
+                                    onCheckedChange = { haptics ->
+                                        onUpdateSettings { it.copy(hapticsEnabled = haptics) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.showInLandscape) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Show in Landscape", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Icon(Icons.Default.ScreenRotation, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.showInLandscape,
+                                    onCheckedChange = { inLandscape ->
+                                        onUpdateSettings { it.copy(showInLandscape = inLandscape) }
                                     }
                                 )
                             }
