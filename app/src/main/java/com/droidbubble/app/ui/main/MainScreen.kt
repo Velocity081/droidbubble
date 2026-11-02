@@ -3541,15 +3541,6 @@ fun DroidbarPage(
 ) {
     BackHandler(onBack = onBack)
     val context = LocalContext.current
-    var hasUsagePermission by remember { mutableStateOf(MostUsedAppsHelper.hasUsageStatsPermission(context)) }
-    var apps by remember { mutableStateOf<List<BarAppInfo>>(emptyList()) }
-
-    LaunchedEffect(Unit) {
-        hasUsagePermission = MostUsedAppsHelper.hasUsageStatsPermission(context)
-        apps = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            MostUsedAppsHelper.getMostUsedApps(context, limit = 6)
-        }
-    }
 
     Scaffold(
         modifier = modifier,
@@ -3651,47 +3642,9 @@ fun DroidbarPage(
                 }
             }
 
-            // USAGE ACCESS NOTICE IF NOT GRANTED
-            if (!hasUsagePermission) {
-                item {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
-                    ) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Usage Access", fontWeight = FontWeight.SemiBold) },
-                            supportingContent = {
-                                Text(
-                                    "Optional: Grant Usage Access so Android accurately ranks your 6 most used apps. Otherwise, top launcher apps are displayed.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            trailingContent = {
-                                TextButton(
-                                    onClick = {
-                                        runCatching {
-                                            context.startActivity(
-                                                Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
-                                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                                }
-                                            )
-                                        }
-                                    }
-                                ) {
-                                    Text("Grant")
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-
-            // SECTION: APPS IN DROIDBAR
+            // CONTROLS SECTION (NO DESCRIPTIONS)
             item {
-                SectionHeader(title = "6 Most Used Apps")
+                SectionHeader(title = "Controls")
             }
 
             item {
@@ -3699,50 +3652,68 @@ fun DroidbarPage(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    if (apps.isEmpty()) {
-                        SettingsCardItem(position = GroupPosition.SINGLE) {
-                            ListItem(
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                headlineContent = { Text("Loading apps...", style = MaterialTheme.typography.bodyMedium) }
-                            )
-                        }
-                    } else {
-                        apps.forEachIndexed { index, app ->
-                            val position = when {
-                                apps.size == 1 -> GroupPosition.SINGLE
-                                index == 0 -> GroupPosition.TOP
-                                index == apps.size - 1 -> GroupPosition.BOTTOM
-                                else -> GroupPosition.MIDDLE
-                            }
-                            SettingsCardItem(position = position) {
-                                ListItem(
-                                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                    headlineContent = { Text(app.label, fontWeight = FontWeight.SemiBold) },
-                                    supportingContent = { Text(app.packageName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                                    leadingContent = {
-                                        if (app.iconBitmap != null) {
-                                            Image(
-                                                bitmap = app.iconBitmap.asImageBitmap(),
-                                                contentDescription = app.label,
-                                                modifier = Modifier
-                                                    .size(38.dp)
-                                                    .clip(RoundedCornerShape(8.dp))
-                                            )
-                                        } else {
-                                            Surface(
-                                                modifier = Modifier.size(38.dp),
-                                                shape = RoundedCornerShape(8.dp),
-                                                color = MaterialTheme.colorScheme.surfaceVariant
-                                            ) {
-                                                Box(contentAlignment = Alignment.Center) {
-                                                    Icon(Icons.Default.Apps, contentDescription = null, modifier = Modifier.size(20.dp))
-                                                }
-                                            }
-                                        }
+                    SettingsCardItem(position = GroupPosition.TOP) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Flashlight", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Surface(
+                                    modifier = Modifier.size(38.dp),
+                                    shape = M3Cookie6Shape,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                ) {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Default.FlashlightOn,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.droidbarShowFlashlight,
+                                    onCheckedChange = { checked ->
+                                        onUpdateSettings { it.copy(droidbarShowFlashlight = checked) }
                                     }
                                 )
                             }
-                        }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.BOTTOM) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Ring mode", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Surface(
+                                    modifier = Modifier.size(38.dp),
+                                    shape = M3Cookie6Shape,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                ) {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Default.NotificationsActive,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.droidbarShowRingMode,
+                                    onCheckedChange = { checked ->
+                                        onUpdateSettings { it.copy(droidbarShowRingMode = checked) }
+                                    }
+                                )
+                            }
+                        )
                     }
                 }
             }

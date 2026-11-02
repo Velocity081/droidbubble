@@ -1022,10 +1022,10 @@ class IslandOverlayService : Service() {
         windowManager = wm
 
         val density = resources.displayMetrics.density
-        val screenHeight = resources.displayMetrics.heightPixels
+        val realScreenHeight = getRealScreenHeight(wm)
         val initialWidth = (32 * density).toInt()
         val initialHeight = (72 * density).toInt()
-        val initialY = (screenHeight / 2) - (initialHeight / 2)
+        val initialY = (realScreenHeight / 2) - (initialHeight / 2)
 
         val flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
@@ -1053,14 +1053,17 @@ class IslandOverlayService : Service() {
                 layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
             }
         }
+        disableMoveAnimation(params)
         droidbarParams = params
 
         val v = ComposeView(this).apply {
             setViewTreeLifecycleOwner(lifecycleOwner)
             setViewTreeSavedStateRegistryOwner(lifecycleOwner)
             setContent {
+                val liveSettings by settingsRepository.settingsFlow.collectAsState(initial = currentSettings)
                 DroidbarOverlay(
                     context = this@IslandOverlayService,
+                    settings = liveSettings,
                     onExpandChanged = { isExpanded ->
                         updateDroidbarLayoutParams(isExpanded)
                     }
@@ -1075,12 +1078,24 @@ class IslandOverlayService : Service() {
         }
     }
 
+    private fun getRealScreenHeight(wm: WindowManager): Int {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            wm.currentWindowMetrics.bounds.height()
+        } else {
+            val display = wm.defaultDisplay
+            val size = android.graphics.Point()
+            @Suppress("DEPRECATION")
+            display.getRealSize(size)
+            size.y
+        }
+    }
+
     private fun updateDroidbarLayoutParams(isExpanded: Boolean) {
         val params = droidbarParams ?: return
         val v = droidbarView ?: return
         val wm = windowManager ?: return
         val density = resources.displayMetrics.density
-        val screenHeight = resources.displayMetrics.heightPixels
+        val realScreenHeight = getRealScreenHeight(wm)
 
         if (isExpanded) {
             params.width = WindowManager.LayoutParams.MATCH_PARENT
@@ -1094,12 +1109,13 @@ class IslandOverlayService : Service() {
             params.width = (32 * density).toInt()
             params.height = (72 * density).toInt()
             params.x = 0
-            params.y = (screenHeight / 2) - (params.height / 2)
+            params.y = (realScreenHeight / 2) - (params.height / 2)
             params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
         }
+        disableMoveAnimation(params)
         try {
             wm.updateViewLayout(v, params)
         } catch (e: Exception) {

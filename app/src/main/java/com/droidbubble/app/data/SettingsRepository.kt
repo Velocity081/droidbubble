@@ -82,6 +82,8 @@ class SettingsRepository(private val context: Context) {
         val MEDIA_CONTROL_ALIGNMENT = stringPreferencesKey("media_control_alignment")
         val MEDIA_LAYERS_ORDER = stringPreferencesKey("media_layers_order")
         val DROIDBAR_ENABLED = booleanPreferencesKey("droidbar_enabled")
+        val DROIDBAR_SHOW_FLASHLIGHT = booleanPreferencesKey("droidbar_show_flashlight")
+        val DROIDBAR_SHOW_RING_MODE = booleanPreferencesKey("droidbar_show_ring_mode")
     }
 
     val settingsFlow: Flow<IslandSettings> = context.dataStore.data.map { preferences ->
@@ -170,7 +172,9 @@ class SettingsRepository(private val context: Context) {
                     val set = list.toSet()
                     list.filter { it in DEFAULT_MEDIA_LAYERS } + DEFAULT_MEDIA_LAYERS.filter { it !in set }
                 } ?: DEFAULT_MEDIA_LAYERS,
-            droidbarEnabled = preferences[PreferencesKeys.DROIDBAR_ENABLED] ?: false
+            droidbarEnabled = preferences[PreferencesKeys.DROIDBAR_ENABLED] ?: false,
+            droidbarShowFlashlight = preferences[PreferencesKeys.DROIDBAR_SHOW_FLASHLIGHT] ?: true,
+            droidbarShowRingMode = preferences[PreferencesKeys.DROIDBAR_SHOW_RING_MODE] ?: true
         )
     }
 
@@ -261,7 +265,9 @@ class SettingsRepository(private val context: Context) {
                         val set = list.toSet()
                         list.filter { it in DEFAULT_MEDIA_LAYERS } + DEFAULT_MEDIA_LAYERS.filter { it !in set }
                     } ?: DEFAULT_MEDIA_LAYERS,
-                droidbarEnabled = preferences[PreferencesKeys.DROIDBAR_ENABLED] ?: false
+                droidbarEnabled = preferences[PreferencesKeys.DROIDBAR_ENABLED] ?: false,
+            droidbarShowFlashlight = preferences[PreferencesKeys.DROIDBAR_SHOW_FLASHLIGHT] ?: true,
+            droidbarShowRingMode = preferences[PreferencesKeys.DROIDBAR_SHOW_RING_MODE] ?: true
             )
 
             val newSettings = update(current)
@@ -328,6 +334,8 @@ class SettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.MEDIA_CONTROL_ALIGNMENT] = newSettings.mediaControlAlignment
             preferences[PreferencesKeys.MEDIA_LAYERS_ORDER] = newSettings.mediaLayersOrder.joinToString(",")
             preferences[PreferencesKeys.DROIDBAR_ENABLED] = newSettings.droidbarEnabled
+            preferences[PreferencesKeys.DROIDBAR_SHOW_FLASHLIGHT] = newSettings.droidbarShowFlashlight
+            preferences[PreferencesKeys.DROIDBAR_SHOW_RING_MODE] = newSettings.droidbarShowRingMode
         }
     }
 }

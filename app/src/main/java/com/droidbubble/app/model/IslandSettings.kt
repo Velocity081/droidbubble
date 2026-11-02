@@ -88,7 +88,9 @@ data class IslandSettings(
     val featurePriorities: List<String> = DEFAULT_FEATURE_PRIORITIES,
     val mediaControlAlignment: String = "CENTER",
     val mediaLayersOrder: List<String> = DEFAULT_MEDIA_LAYERS,
-    val droidbarEnabled: Boolean = false
+    val droidbarEnabled: Boolean = false,
+    val droidbarShowFlashlight: Boolean = true,
+    val droidbarShowRingMode: Boolean = true
 ) {
     val isGlass: Boolean get() = designLanguage == DesignLanguage.GLASS || glassEnabled
     val isMaterial3: Boolean get() = designLanguage == DesignLanguage.MATERIAL3

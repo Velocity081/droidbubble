@@ -1,9 +1,16 @@
 package com.droidbubble.app.droidbar
 
+import android.app.NotificationManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
+import android.media.AudioManager
 import android.view.HapticFeedbackConstants
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -20,9 +27,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.FlashlightOff
+import androidx.compose.material.icons.filled.FlashlightOn
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.NotificationsOff
+import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -36,19 +55,45 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
+import com.droidbubble.app.island.IslandStateManager
+import com.droidbubble.app.model.IslandSettings
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 @Composable
 fun DroidbarOverlay(
     context: Context,
+    settings: IslandSettings,
     onExpandChanged: (Boolean) -> Unit
 ) {
     val view = LocalView.current
+    val animProgress = remember { Animatable(0f) }
     var isExpanded by remember { mutableStateOf(false) }
     var isWindowExpanded by remember { mutableStateOf(false) }
     var apps by remember { mutableStateOf<List<BarAppInfo>>(emptyList()) }
+
+    val isFlashlightOn by IslandStateManager.isFlashlightOn.collectAsState()
+
+    var currentRingerMode by remember {
+        val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        mutableIntStateOf(am?.ringerMode ?: AudioManager.RINGER_MODE_NORMAL)
+    }
+
+    DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) {
+                val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+                currentRingerMode = am?.ringerMode ?: AudioManager.RINGER_MODE_NORMAL
+            }
+        }
+        val filter = IntentFilter(AudioManager.RINGER_MODE_CHANGED_ACTION).apply {
+            addAction("android.media.INTERNAL_RINGER_MODE_CHANGED_ACTION")
+        }
+        context.registerReceiver(receiver, filter)
+        onDispose {
+            runCatching { context.unregisterReceiver(receiver) }
+        }
+    }
 
     // Initial load of apps
     LaunchedEffect(Unit) {
@@ -58,7 +103,7 @@ fun DroidbarOverlay(
         apps = loadedApps
     }
 
-    // Handle expand/collapse lifecycle and window resizing
+    // Animate expand and collapse smoothly with single Animatable
     LaunchedEffect(isExpanded) {
         if (isExpanded) {
             isWindowExpanded = true
@@ -67,51 +112,59 @@ fun DroidbarOverlay(
                 MostUsedAppsHelper.getMostUsedApps(context, limit = 6)
             }
             apps = loadedApps
+            animProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(
+                    dampingRatio = 0.68f,
+                    stiffness = 380f
+                )
+            )
         } else {
-            // Wait for collapse spring animation to complete before resizing window bounds
-            delay(380)
+            animProgress.animateTo(
+                targetValue = 0f,
+                animationSpec = tween(
+                    durationMillis = 260,
+                    easing = FastOutSlowInEasing
+                )
+            )
             isWindowExpanded = false
             onExpandChanged(false)
         }
     }
 
-    // Spring animations with Island-like subtle bounce on expand, smooth settle on collapse
-    val bounceAnimSpecDp = spring<androidx.compose.ui.unit.Dp>(
-        dampingRatio = if (isExpanded) 0.68f else 1.0f,
-        stiffness = if (isExpanded) 340f else 450f
-    )
+    val controlCount = (if (settings.droidbarShowFlashlight) 1 else 0) + (if (settings.droidbarShowRingMode) 1 else 0)
+    val hasControls = controlCount > 0
+    val appCount = apps.size
+    val hasApps = appCount > 0
 
-    val targetWidth = if (isExpanded) 68.dp else 5.dp
-    val targetHeight = if (isExpanded) {
-        val appCount = if (apps.isNotEmpty()) apps.size else 6
-        (appCount * 56 + 28).dp
-    } else {
-        44.dp
-    }
-    val targetCornerRadius = if (isExpanded) 26.dp else 3.dp
-    val targetEndMargin = if (isExpanded) 8.dp else 0.dp
+    val targetExpandedHeight = when {
+        hasControls && hasApps -> (controlCount * 50 + 12 + appCount * 50 + 24).dp
+        hasControls -> (controlCount * 52 + 24).dp
+        hasApps -> (appCount * 52 + 24).dp
+        else -> 120.dp
+    }.coerceAtLeast(80.dp)
 
-    val animatedWidth by animateDpAsState(targetValue = targetWidth, animationSpec = bounceAnimSpecDp, label = "barWidth")
-    val animatedHeight by animateDpAsState(targetValue = targetHeight, animationSpec = bounceAnimSpecDp, label = "barHeight")
-    val animatedCornerRadius by animateDpAsState(targetValue = targetCornerRadius, animationSpec = bounceAnimSpecDp, label = "barRadius")
-    val animatedEndMargin by animateDpAsState(targetValue = targetEndMargin, animationSpec = bounceAnimSpecDp, label = "barMargin")
+    val progress = animProgress.value.coerceIn(0f, 1.25f)
 
-    val safeEndMargin = animatedEndMargin.coerceAtLeast(0.dp)
-    val safeWidth = animatedWidth.coerceAtLeast(4.dp)
-    val safeHeight = animatedHeight.coerceAtLeast(40.dp)
-    val safeRadius = animatedCornerRadius.coerceAtLeast(0.dp)
+    val barWidth = (5.dp + (68.dp - 5.dp) * progress).coerceAtLeast(5.dp)
+    val barHeight = (44.dp + (targetExpandedHeight - 44.dp) * progress).coerceAtLeast(44.dp)
+    val endMargin = (8.dp * progress).coerceAtLeast(0.dp)
 
-    // Content fade & scale
-    val contentProgress by animateFloatAsState(
+    // Smooth corner radius interpolation to eliminate corners sharpening before collapse
+    val startRadius = (3.dp + (26.dp - 3.dp) * progress).coerceAtLeast(3.dp)
+    val endRadius = (26.dp * progress).coerceAtLeast(0.dp)
+
+    // Quick content fade during collapse to avoid layout hitching
+    val contentAlpha by animateFloatAsState(
         targetValue = if (isExpanded) 1f else 0f,
-        animationSpec = if (isExpanded) tween(240, delayMillis = 60) else tween(160),
+        animationSpec = if (isExpanded) tween(200, delayMillis = 60) else tween(90),
         label = "contentAlpha"
     )
 
     // Backdrop dim fade
     val backdropAlpha by animateFloatAsState(
         targetValue = if (isExpanded) 0.30f else 0f,
-        animationSpec = tween(durationMillis = if (isExpanded) 250 else 200),
+        animationSpec = tween(durationMillis = if (isExpanded) 220 else 180),
         label = "backdropAlpha"
     )
 
@@ -133,30 +186,25 @@ fun DroidbarOverlay(
             ),
         contentAlignment = Alignment.CenterEnd
     ) {
-        // The Droidbar surface: fully opaque black, NO outline, expanding with subtle bounce
+        val currentShape = RoundedCornerShape(
+            topStart = startRadius,
+            bottomStart = startRadius,
+            topEnd = endRadius,
+            bottomEnd = endRadius
+        )
+
+        // The Droidbar surface: fully opaque black, NO outline, smooth collapse and bounce expand
         Box(
             modifier = Modifier
-                .padding(end = safeEndMargin)
-                .width(safeWidth)
-                .height(safeHeight)
+                .padding(end = endMargin)
+                .width(barWidth)
+                .height(barHeight)
                 .shadow(
                     elevation = if (isExpanded) 12.dp else 4.dp,
-                    shape = RoundedCornerShape(
-                        topStart = safeRadius,
-                        bottomStart = safeRadius,
-                        topEnd = if (isExpanded) safeRadius else 0.dp,
-                        bottomEnd = if (isExpanded) safeRadius else 0.dp
-                    )
+                    shape = currentShape
                 )
-                .clip(
-                    RoundedCornerShape(
-                        topStart = safeRadius,
-                        bottomStart = safeRadius,
-                        topEnd = if (isExpanded) safeRadius else 0.dp,
-                        bottomEnd = if (isExpanded) safeRadius else 0.dp
-                    )
-                )
-                .background(Color.Black) // Fully opaque black, no outline
+                .clip(currentShape)
+                .background(Color.Black)
                 .clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() }
@@ -168,8 +216,8 @@ fun DroidbarOverlay(
                 },
             contentAlignment = Alignment.Center
         ) {
-            if (!isExpanded && contentProgress < 0.1f) {
-                // Subtle white edge indicator stripe inside the black edge bar for visibility on all wallpapers
+            if (!isExpanded && contentAlpha < 0.05f) {
+                // Subtle white edge indicator stripe inside the black edge bar for visibility
                 Box(
                     modifier = Modifier
                         .width(2.5.dp)
@@ -177,45 +225,124 @@ fun DroidbarOverlay(
                         .clip(RoundedCornerShape(1.5.dp))
                         .background(Color.White.copy(alpha = 0.70f))
                 )
-            } else if (contentProgress > 0.05f) {
-                // Expanded apps list
-                Column(
+            } else if (isExpanded || contentAlpha > 0.02f) {
+                // Fixed 68dp container avoids child reflow and constraint hitching during size animation
+                Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(vertical = 14.dp, horizontal = 10.dp)
+                        .width(68.dp)
+                        .height(barHeight)
                         .graphicsLayer {
-                            alpha = contentProgress
-                            scaleX = 0.85f + (0.15f * contentProgress)
-                            scaleY = 0.85f + (0.15f * contentProgress)
+                            alpha = contentAlpha
+                            scaleX = 0.88f + (0.12f * contentAlpha)
+                            scaleY = 0.88f + (0.12f * contentAlpha)
                         },
-                    verticalArrangement = Arrangement.SpaceEvenly,
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    contentAlignment = Alignment.Center
                 ) {
-                    apps.forEach { app ->
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .clickable {
-                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                    val launchIntent = context.packageManager.getLaunchIntentForPackage(app.packageName)?.apply {
-                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    }
-                                    if (launchIntent != null) {
-                                        try {
-                                            context.startActivity(launchIntent)
-                                        } catch (_: Exception) {}
-                                    }
-                                    isExpanded = false
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (app.iconBitmap != null) {
-                                Image(
-                                    bitmap = app.iconBitmap.asImageBitmap(),
-                                    contentDescription = app.label,
-                                    modifier = Modifier.size(40.dp)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(vertical = 12.dp, horizontal = 10.dp),
+                        verticalArrangement = Arrangement.SpaceEvenly,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Flashlight toggle control
+                        if (settings.droidbarShowFlashlight) {
+                            val isFlashlightActive = isFlashlightOn
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(
+                                        if (isFlashlightActive) Color(0xFFFFD600).copy(alpha = 0.28f)
+                                        else Color.White.copy(alpha = 0.12f)
+                                    )
+                                    .clickable {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        toggleFlashlight(context)
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isFlashlightActive) Icons.Default.FlashlightOn else Icons.Default.FlashlightOff,
+                                    contentDescription = "Flashlight",
+                                    modifier = Modifier.size(22.dp),
+                                    tint = if (isFlashlightActive) Color(0xFFFFD600) else Color.White
                                 )
+                            }
+                        }
+
+                        // Ring mode toggle control
+                        if (settings.droidbarShowRingMode) {
+                            val (ringerIcon, ringerTint) = when (currentRingerMode) {
+                                AudioManager.RINGER_MODE_NORMAL -> Pair(Icons.Default.NotificationsActive, Color.White)
+                                AudioManager.RINGER_MODE_VIBRATE -> Pair(Icons.Default.Vibration, Color(0xFFFF9800))
+                                AudioManager.RINGER_MODE_SILENT -> Pair(Icons.Default.NotificationsOff, Color(0xFFEF5350))
+                                else -> Pair(Icons.Default.Notifications, Color.White)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(Color.White.copy(alpha = 0.12f))
+                                    .clickable {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        cycleRingerMode(context) { newMode ->
+                                            currentRingerMode = newMode
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = ringerIcon,
+                                    contentDescription = "Ring Mode",
+                                    modifier = Modifier.size(22.dp),
+                                    tint = ringerTint
+                                )
+                            }
+                        }
+
+                        // Subtle divider between controls and apps
+                        if (hasControls && hasApps) {
+                            Box(
+                                modifier = Modifier
+                                    .width(32.dp)
+                                    .height(1.dp)
+                                    .background(Color.White.copy(alpha = 0.15f))
+                            )
+                        }
+
+                        // Apps list
+                        apps.forEach { app ->
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        val launchIntent = context.packageManager.getLaunchIntentForPackage(app.packageName)?.apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        if (launchIntent != null) {
+                                            runCatching { context.startActivity(launchIntent) }
+                                        }
+                                        isExpanded = false
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (app.iconBitmap != null) {
+                                    Image(
+                                        bitmap = app.iconBitmap.asImageBitmap(),
+                                        contentDescription = app.label,
+                                        modifier = Modifier.size(38.dp)
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Apps,
+                                        contentDescription = app.label,
+                                        modifier = Modifier.size(24.dp),
+                                        tint = Color.White.copy(alpha = 0.7f)
+                                    )
+                                }
                             }
                         }
                     }
@@ -223,4 +350,32 @@ fun DroidbarOverlay(
             }
         }
     }
+}
+
+private fun toggleFlashlight(context: Context) {
+    val cm = context.getSystemService(Context.CAMERA_SERVICE) as? CameraManager ?: return
+    try {
+        val id = cm.cameraIdList.firstOrNull { id ->
+            cm.getCameraCharacteristics(id).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+        } ?: return
+        val currentOn = IslandStateManager.isFlashlightOn.value
+        cm.setTorchMode(id, !currentOn)
+    } catch (_: Exception) {}
+}
+
+private fun cycleRingerMode(context: Context, onModeChanged: (Int) -> Unit) {
+    val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+    val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+    val hasDnd = nm?.isNotificationPolicyAccessGranted == true
+    val current = am.ringerMode
+    val next = when (current) {
+        AudioManager.RINGER_MODE_NORMAL -> AudioManager.RINGER_MODE_VIBRATE
+        AudioManager.RINGER_MODE_VIBRATE -> if (hasDnd) AudioManager.RINGER_MODE_SILENT else AudioManager.RINGER_MODE_NORMAL
+        AudioManager.RINGER_MODE_SILENT -> AudioManager.RINGER_MODE_NORMAL
+        else -> AudioManager.RINGER_MODE_NORMAL
+    }
+    runCatching {
+        am.ringerMode = next
+    }
+    onModeChanged(am.ringerMode)
 }
