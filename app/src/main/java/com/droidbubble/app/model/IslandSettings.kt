@@ -15,6 +15,12 @@ val DEFAULT_FEATURE_PRIORITIES = listOf(
     "NETWORK_SPEED"
 )
 
+val DEFAULT_MEDIA_LAYERS = listOf(
+    "COVER_AND_TITLE",
+    "SLIDER",
+    "CONTROLS"
+)
+
 enum class DesignLanguage(val id: String, val displayName: String) {
     DROIDBUBBLE("DROIDBUBBLE", "Droidbubble"),
     GLASS("GLASS", "Droidbubble glass"),
@@ -79,7 +85,9 @@ data class IslandSettings(
     val appearStiffness: Float = 280f,
     val splitDamping: Float = 0.63f,
     val splitStiffness: Float = 320f,
-    val featurePriorities: List<String> = DEFAULT_FEATURE_PRIORITIES
+    val featurePriorities: List<String> = DEFAULT_FEATURE_PRIORITIES,
+    val mediaControlAlignment: String = "CENTER",
+    val mediaLayersOrder: List<String> = DEFAULT_MEDIA_LAYERS
 ) {
     val isGlass: Boolean get() = designLanguage == DesignLanguage.GLASS || glassEnabled
     val isMaterial3: Boolean get() = designLanguage == DesignLanguage.MATERIAL3

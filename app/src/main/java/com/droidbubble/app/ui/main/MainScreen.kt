@@ -128,6 +128,15 @@ import com.droidbubble.app.theme.ISLAND_FONTS
 import com.droidbubble.app.model.DEFAULT_FEATURE_PRIORITIES
 import com.droidbubble.app.model.DesignLanguage
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.PlayCircleOutline
+import com.droidbubble.app.model.DEFAULT_MEDIA_LAYERS
+import com.droidbubble.app.island.ExpandedMediaView
+import com.droidbubble.app.island.IslandStateManager
+import com.droidbubble.app.island.MediaBottomWaveOverlay
+import com.droidbubble.app.island.extractMediaAccentColor
+import com.droidbubble.app.model.MediaInfo
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -202,7 +211,8 @@ enum class MainScreenPage {
     DROIDBUBBLE,
     DIMENSIONS,
     APPEARANCE,
-    GENERAL
+    GENERAL,
+    MEDIA_PLAYER
 }
 
 
@@ -340,6 +350,7 @@ fun MainScreen(
     var showDimensionsPage by remember { mutableStateOf(false) }
     var showAppearancePage by remember { mutableStateOf(false) }
     var showGeneralPage by remember { mutableStateOf(false) }
+    var showMediaPlayerPage by remember { mutableStateOf(false) }
     var showFeedbackSheet by remember { mutableStateOf(false) }
     var feedbackType by remember { mutableStateOf(FeedbackType.BUG) }
     var feedbackTitle by remember { mutableStateOf("") }
@@ -374,6 +385,7 @@ fun MainScreen(
     }
 
     val currentNavPage = when {
+        showMediaPlayerPage -> MainScreenPage.MEDIA_PLAYER
         showDimensionsPage -> MainScreenPage.DIMENSIONS
         showAppearancePage -> MainScreenPage.APPEARANCE
         showGeneralPage -> MainScreenPage.GENERAL
@@ -386,7 +398,8 @@ fun MainScreen(
         transitionSpec = {
             val isNavigatingForward = when {
                 initialState == MainScreenPage.TOOLS_ROOT && targetState != MainScreenPage.TOOLS_ROOT -> true
-                initialState == MainScreenPage.DROIDBUBBLE && (targetState == MainScreenPage.DIMENSIONS || targetState == MainScreenPage.APPEARANCE || targetState == MainScreenPage.GENERAL) -> true
+                initialState == MainScreenPage.DROIDBUBBLE && (targetState == MainScreenPage.DIMENSIONS || targetState == MainScreenPage.APPEARANCE || targetState == MainScreenPage.GENERAL || targetState == MainScreenPage.MEDIA_PLAYER) -> true
+                initialState == MainScreenPage.APPEARANCE && targetState == MainScreenPage.MEDIA_PLAYER -> true
                 else -> false
             }
             if (isNavigatingForward) {
@@ -428,7 +441,16 @@ fun MainScreen(
                 AppearancePage(
                     settings = settings,
                     onUpdateSettings = { viewModel.updateSettings(it) },
+                    onNavigateToMediaPlayer = { showMediaPlayerPage = true },
                     onBack = { showAppearancePage = false },
+                    modifier = modifier
+                )
+            }
+            MainScreenPage.MEDIA_PLAYER -> {
+                MediaPlayerCustomizationPage(
+                    settings = settings,
+                    onUpdateSettings = { viewModel.updateSettings(it) },
+                    onBack = { showMediaPlayerPage = false },
                     modifier = modifier
                 )
             }
@@ -734,6 +756,34 @@ fun MainScreen(
                                 Icon(
                                     Icons.AutoMirrored.Filled.ArrowForwardIos,
                                     contentDescription = "Open Appearance & Feedback",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.MIDDLE) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            modifier = Modifier.clickable { showMediaPlayerPage = true },
+                            headlineContent = { Text("Media Player Customisation", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Surface(
+                                    modifier = Modifier.size(38.dp),
+                                    shape = M3Cookie6Shape,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                ) {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.MusicNote, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
+                            },
+                            trailingContent = {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                    contentDescription = "Open Media Player Customisation",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -2136,6 +2186,7 @@ private fun CutoutPositionOptionButton(
 fun AppearancePage(
     settings: IslandSettings,
     onUpdateSettings: ((IslandSettings) -> IslandSettings) -> Unit,
+    onNavigateToMediaPlayer: () -> Unit = {},
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -2349,12 +2400,6 @@ fun AppearancePage(
 
             // Font Picker moved directly below Design Language
             item {
-                SectionHeader(
-                    title = "Island Font"
-                )
-            }
-
-            item {
                 SettingsCardItem(position = GroupPosition.SINGLE) {
                     ListItem(
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -2517,88 +2562,33 @@ fun AppearancePage(
             }
 
             item {
-                SectionHeader(
-                    title = "Media Player Customisation",
-                    icon = Icons.Default.MusicNote
-                )
-            }
-
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    SettingsCardItem(position = GroupPosition.TOP, isActive = settings.mediaWaveAnimation) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Ambient Album Wave", fontWeight = FontWeight.SemiBold) },
-                            leadingContent = {
-                                Icon(Icons.Default.GraphicEq, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.mediaWaveAnimation,
-                                    onCheckedChange = { enabled ->
-                                        onUpdateSettings { it.copy(mediaWaveAnimation = enabled) }
-                                    }
-                                )
+                SettingsCardItem(position = GroupPosition.SINGLE) {
+                    ListItem(
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        modifier = Modifier.clickable { onNavigateToMediaPlayer() },
+                        headlineContent = { Text("Media Player Customisation", fontWeight = FontWeight.SemiBold) },
+                        supportingContent = { Text("Preview, controls alignment, layer order & animations", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        leadingContent = {
+                            Surface(
+                                modifier = Modifier.size(38.dp),
+                                shape = M3Cookie6Shape,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.primary
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.MusicNote, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                                }
                             }
-                        )
-                    }
-
-                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.wavyProgressBar) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Wavy Progress Scrubber", fontWeight = FontWeight.SemiBold) },
-                            leadingContent = {
-                                Icon(Icons.Default.LinearScale, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.wavyProgressBar,
-                                    onCheckedChange = { enabled ->
-                                        onUpdateSettings { it.copy(wavyProgressBar = enabled) }
-                                    }
-                                )
-                            }
-                        )
-                    }
-
-                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.spinningAlbumArt) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Spinning Vinyl Cover", fontWeight = FontWeight.SemiBold) },
-                            leadingContent = {
-                                Icon(Icons.Default.Album, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.spinningAlbumArt,
-                                    onCheckedChange = { enabled ->
-                                        onUpdateSettings { it.copy(spinningAlbumArt = enabled) }
-                                    }
-                                )
-                            }
-                        )
-                    }
-
-                    SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.blurredAlbumArtBackground) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Blurred Album Art Background", fontWeight = FontWeight.SemiBold) },
-                            leadingContent = {
-                                Icon(Icons.Default.MusicNote, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.blurredAlbumArtBackground,
-                                    onCheckedChange = { blurred ->
-                                        onUpdateSettings { it.copy(blurredAlbumArtBackground = blurred) }
-                                    }
-                                )
-                            }
-                        )
-                    }
+                        },
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                contentDescription = "Open Media Player Customisation",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    )
                 }
             }
 
@@ -3055,5 +3045,353 @@ private fun SliderSettingItemPct(
             }
         }
         Slider(value = value, onValueChange = onValueChange, valueRange = valueRange, modifier = Modifier.height(28.dp))
+    }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MediaPlayerCustomizationPage(
+    settings: IslandSettings,
+    onUpdateSettings: ((IslandSettings) -> IslandSettings) -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    BackHandler(onBack = onBack)
+
+    val activeMedia by IslandStateManager.activeMedia.collectAsState()
+    val dummyMedia = remember {
+        MediaInfo(
+            packageName = "com.spotify.music",
+            title = "Starboy",
+            artist = "The Weeknd, Daft Punk",
+            isPlaying = true,
+            durationMs = 230000L,
+            positionMs = 85000L,
+            albumArt = null
+        )
+    }
+    val currentMedia = activeMedia ?: dummyMedia
+    val mediaArt = currentMedia.albumArt ?: currentMedia.appIcon
+    val mediaAccentColor = remember(mediaArt) { extractMediaAccentColor(mediaArt) }
+
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Media Player",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
+            )
+        }
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // SECTION 1: PREVIEW
+            item {
+                SectionHeader(title = "Preview")
+            }
+
+            item {
+                val previewShape = RoundedCornerShape(28.dp)
+                val cardBg = when {
+                    settings.isMaterial3 -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
+                    settings.isGlass -> Color.Black.copy(alpha = (settings.glassOpacity / 100f).coerceIn(0.15f, 0.95f))
+                    else -> Color(0xFF121214)
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(188.dp)
+                        .clip(previewShape)
+                        .background(cardBg)
+                ) {
+                    if (settings.mediaWaveAnimation) {
+                        MediaBottomWaveOverlay(
+                            accentColor = if (mediaAccentColor != Color.Transparent) mediaAccentColor else Color(0xFF64D2FF),
+                            isPlaying = currentMedia.isPlaying,
+                            alphaMultiplier = 1f,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 20.dp, vertical = 18.dp)
+                    ) {
+                        ExpandedMediaView(
+                            media = currentMedia,
+                            onCollapse = {},
+                            scale = 1.0f,
+                            spinningAlbumArt = settings.spinningAlbumArt,
+                            wavyProgressBar = settings.wavyProgressBar,
+                            designLanguage = settings.designLanguage,
+                            mediaControlAlignment = settings.mediaControlAlignment,
+                            mediaLayersOrder = settings.mediaLayersOrder
+                        )
+                    }
+                }
+            }
+
+            // SECTION 2: CONTROLS ALIGNMENT
+            item {
+                SectionHeader(title = "Controls Alignment")
+            }
+
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    val alignments = listOf(
+                        "LEFT" to "Left",
+                        "CENTER" to "Center",
+                        "RIGHT" to "Right"
+                    )
+                    alignments.forEachIndexed { index, (key, label) ->
+                        val isSelected = settings.mediaControlAlignment == key
+                        val shape = getHorizontalSegmentShape(index, alignments.size, isSelected)
+                        val backgroundColor by animateColorAsState(
+                            targetValue = if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            },
+                            label = "align_bg"
+                        )
+                        val contentColor by animateColorAsState(
+                            targetValue = if (isSelected) {
+                                MaterialTheme.colorScheme.onPrimary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            label = "align_text"
+                        )
+
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(shape)
+                                .clickable {
+                                    onUpdateSettings { it.copy(mediaControlAlignment = key) }
+                                },
+                            shape = shape,
+                            color = backgroundColor
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = contentColor,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // SECTION 3: LAYER ORDER
+            item {
+                SectionHeader(title = "Layer Order")
+            }
+
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    val currentOrder = if (settings.mediaLayersOrder.isNotEmpty()) settings.mediaLayersOrder else DEFAULT_MEDIA_LAYERS
+                    currentOrder.forEachIndexed { index, layerKey ->
+                        val position = when {
+                            currentOrder.size == 1 -> GroupPosition.SINGLE
+                            index == 0 -> GroupPosition.TOP
+                            index == currentOrder.size - 1 -> GroupPosition.BOTTOM
+                            else -> GroupPosition.MIDDLE
+                        }
+
+                        val (title, icon) = when (layerKey) {
+                            "COVER_AND_TITLE" -> "Album cover and title" to Icons.Default.Album
+                            "SLIDER" -> "Media slider" to Icons.Default.LinearScale
+                            "CONTROLS" -> "Control buttons" to Icons.Default.PlayCircleOutline
+                            else -> layerKey to Icons.Default.Layers
+                        }
+
+                        SettingsCardItem(position = position) {
+                            ListItem(
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                headlineContent = { Text(title, fontWeight = FontWeight.SemiBold) },
+                                leadingContent = {
+                                    Surface(
+                                        modifier = Modifier.size(38.dp),
+                                        shape = M3Cookie6Shape,
+                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.primary
+                                    ) {
+                                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                                        }
+                                    }
+                                },
+                                trailingContent = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        IconButton(
+                                            onClick = {
+                                                if (index > 0) {
+                                                    val newOrder = currentOrder.toMutableList()
+                                                    val temp = newOrder[index]
+                                                    newOrder[index] = newOrder[index - 1]
+                                                    newOrder[index - 1] = temp
+                                                    onUpdateSettings { it.copy(mediaLayersOrder = newOrder) }
+                                                }
+                                            },
+                                            enabled = index > 0
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.KeyboardArrowUp,
+                                                contentDescription = "Move Up",
+                                                tint = if (index > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                                            )
+                                        }
+
+                                        IconButton(
+                                            onClick = {
+                                                if (index < currentOrder.size - 1) {
+                                                    val newOrder = currentOrder.toMutableList()
+                                                    val temp = newOrder[index]
+                                                    newOrder[index] = newOrder[index + 1]
+                                                    newOrder[index + 1] = temp
+                                                    onUpdateSettings { it.copy(mediaLayersOrder = newOrder) }
+                                                }
+                                            },
+                                            enabled = index < currentOrder.size - 1
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.KeyboardArrowDown,
+                                                contentDescription = "Move Down",
+                                                tint = if (index < currentOrder.size - 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                                            )
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // SECTION 4: OPTIONS & ANIMATIONS
+            item {
+                SectionHeader(title = "Options & Animations")
+            }
+
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    SettingsCardItem(position = GroupPosition.TOP, isActive = settings.mediaWaveAnimation) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Ambient Album Wave", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Icon(Icons.Default.GraphicEq, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.mediaWaveAnimation,
+                                    onCheckedChange = { enabled ->
+                                        onUpdateSettings { it.copy(mediaWaveAnimation = enabled) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.wavyProgressBar) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Wavy Progress Scrubber", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Icon(Icons.Default.LinearScale, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.wavyProgressBar,
+                                    onCheckedChange = { enabled ->
+                                        onUpdateSettings { it.copy(wavyProgressBar = enabled) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.spinningAlbumArt) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Spinning Vinyl Cover", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Icon(Icons.Default.Album, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.spinningAlbumArt,
+                                    onCheckedChange = { enabled ->
+                                        onUpdateSettings { it.copy(spinningAlbumArt = enabled) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.blurredAlbumArtBackground) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Blurred Album Art Background", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Icon(Icons.Default.MusicNote, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.blurredAlbumArtBackground,
+                                    onCheckedChange = { blurred ->
+                                        onUpdateSettings { it.copy(blurredAlbumArtBackground = blurred) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+        }
     }
 }

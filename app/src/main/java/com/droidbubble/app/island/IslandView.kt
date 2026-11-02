@@ -119,6 +119,7 @@ import com.droidbubble.app.model.FpsInfo
 import com.droidbubble.app.model.HourlyWeather
 import com.droidbubble.app.model.WeatherInfo
 import com.droidbubble.app.model.NetworkSpeedInfo
+import com.droidbubble.app.model.DEFAULT_MEDIA_LAYERS
 import com.droidbubble.app.island.IslandStateManager.RingerMode
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -1717,6 +1718,8 @@ fun IslandOverlayRoot(
                                         notificationMaxLines = settings.notificationMaxLines,
                                         charging = charging,
                                         designLanguage = settings.designLanguage,
+                                        mediaControlAlignment = settings.mediaControlAlignment,
+                                        mediaLayersOrder = settings.mediaLayersOrder,
                                         onCollapse = {
                                             triggerHaptic()
                                             IslandStateManager.collapse()
@@ -1993,6 +1996,8 @@ fun IslandOverlayRoot(
                                         notificationMaxLines = settings.notificationMaxLines,
                                         charging = charging,
                                         designLanguage = settings.designLanguage,
+                                        mediaControlAlignment = settings.mediaControlAlignment,
+                                        mediaLayersOrder = settings.mediaLayersOrder,
                                         onCollapse = {
                                             triggerHaptic()
                                             IslandStateManager.collapse()
@@ -2267,6 +2272,8 @@ fun IslandOverlayRoot(
                                         notificationMaxLines = settings.notificationMaxLines,
                                         charging = charging,
                                         designLanguage = settings.designLanguage,
+                                        mediaControlAlignment = settings.mediaControlAlignment,
+                                        mediaLayersOrder = settings.mediaLayersOrder,
                                         onCollapse = {
                                             triggerHaptic()
                                             IslandStateManager.collapse()
@@ -3929,6 +3936,8 @@ fun ExpandedCardContent(
     notificationMaxLines: Int = 2,
     charging: IslandStateManager.ChargingInfo? = null,
     designLanguage: DesignLanguage = DesignLanguage.DROIDBUBBLE,
+    mediaControlAlignment: String = "CENTER",
+    mediaLayersOrder: List<String> = DEFAULT_MEDIA_LAYERS,
     onCollapse: () -> Unit
 ) {
     when (priority) {
@@ -3954,7 +3963,9 @@ fun ExpandedCardContent(
                 scale = scale,
                 spinningAlbumArt = spinningAlbumArt,
                 wavyProgressBar = wavyProgressBar,
-                designLanguage = designLanguage
+                designLanguage = designLanguage,
+                mediaControlAlignment = mediaControlAlignment,
+                mediaLayersOrder = mediaLayersOrder
             )
         }
         IslandPriority.FLASHLIGHT -> {
@@ -4315,7 +4326,9 @@ fun ExpandedMediaView(
     scale: Float = 1.0f,
     spinningAlbumArt: Boolean = false,
     wavyProgressBar: Boolean = true,
-    designLanguage: DesignLanguage = DesignLanguage.DROIDBUBBLE
+    designLanguage: DesignLanguage = DesignLanguage.DROIDBUBBLE,
+    mediaControlAlignment: String = "CENTER",
+    mediaLayersOrder: List<String> = DEFAULT_MEDIA_LAYERS
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -4434,16 +4447,13 @@ fun ExpandedMediaView(
         }
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
-        // Header: Album cover / app icon + Title & Artist + Equalizer
+    val resolvedLayers = if (mediaLayersOrder.isNotEmpty()) mediaLayersOrder else DEFAULT_MEDIA_LAYERS
+
+    val headerLayer: @Composable () -> Unit = {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Album cover (larger, tap to open app and collapse island)
             Box(
                 modifier = Modifier
                     .size(artSize)
@@ -4503,7 +4513,6 @@ fun ExpandedMediaView(
             Spacer(modifier = Modifier.width(headerGap))
 
             Column(modifier = Modifier.weight(1f)) {
-                // Title with infinite marquee slide
                 Text(
                     text = media?.title?.ifBlank { "No Media Playing" } ?: "No Media Playing",
                     color = Color.White,
@@ -4517,7 +4526,6 @@ fun ExpandedMediaView(
                     )
                 )
                 Spacer(modifier = Modifier.height(3.dp))
-                // Artist with marquee slide
                 Text(
                     text = media?.artist?.ifBlank { "Unknown Artist" } ?: "Unknown Artist",
                     color = Color(0xFFA1A1AA),
@@ -4536,10 +4544,9 @@ fun ExpandedMediaView(
 
             EqualizerVisualizer(isPlaying = media?.isPlaying == true, barColor = eqTint)
         }
+    }
 
-        Spacer(modifier = Modifier.height(sliderGapTop))
-
-        // Progress Bar & Duration on Left & Right
+    val sliderLayer: @Composable () -> Unit = {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -4647,15 +4654,20 @@ fun ExpandedMediaView(
                 fontWeight = FontWeight.SemiBold
             )
         }
+    }
 
-        Spacer(modifier = Modifier.height(sliderGapBottom))
-
-        // Playback Controls (moved upward, no big gap)
+    val controlsLayer: @Composable () -> Unit = {
+        val controlsBoxAlignment = when (mediaControlAlignment) {
+            "LEFT" -> Alignment.CenterStart
+            "RIGHT" -> Alignment.CenterEnd
+            else -> Alignment.Center
+        }
         Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = if (mediaControlAlignment == "CENTER") 0.dp else 4.dp),
+            contentAlignment = controlsBoxAlignment
         ) {
-            // Centered Controls: Previous, Play/Pause, Next
             val isMediaPlaying = media?.isPlaying == true
             val cloverRotation = remember { Animatable(if (isMediaPlaying) 45f else 0f) }
             LaunchedEffect(isMediaPlaying) {
@@ -4678,6 +4690,7 @@ fun ExpandedMediaView(
             } else {
                 Modifier.size(prevNextSize)
             }
+
             Row(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
@@ -4732,8 +4745,19 @@ fun ExpandedMediaView(
                     )
                 }
             }
+        }
+    }
 
-
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        resolvedLayers.forEach { layerKey ->
+            when (layerKey) {
+                "COVER_AND_TITLE" -> headerLayer()
+                "SLIDER" -> sliderLayer()
+                "CONTROLS" -> controlsLayer()
+            }
         }
     }
 }
