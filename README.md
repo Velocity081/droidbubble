@@ -19,55 +19,51 @@
 
 ---
 
-Droidtools is a lightweight suite of system overlay utilities for Android, built natively in Kotlin with Jetpack Compose and Material 3.
+# Droidtools
 
-It packages two everyday utilities into one app:
-- **Droidbubble**: An adaptive dynamic island around your front camera cutout for media, notifications, and system events.
-- **Droidbar**: A slide-out edge bar on the right side of the screen for quick toggles and frequent apps.
+A small collection of overlay tools for Android. Built natively with Kotlin, Jetpack Compose and Material 3.
 
-Free, open source, no ads, and no background tracking.
+Right now it has two things in it:
 
----
+- **Droidbubble**: a dynamic island that wraps around your front camera.
+- **Droidbar**: a little bar on the right edge of your screen for quick toggles and apps.
 
-## Utilities
-
-### Droidbubble
-- **Now Playing**: Album artwork, track title, seek bar, playback controls, and adaptive background blur.
-- **System Events**: Battery charging wattage, ringer profile changes, and active status indicators.
-- **Notifications**: Heads-up alerts with expandable previews and inline quick replies.
-- **Idle Tuck**: Sits flush inside your front camera cutout when nothing is active.
-- **Customization**: Position offsets, dimensions, spring tension, font picker, and layout layer reordering.
-
-### Droidbar
-- **Edge Access**: Tap a subtle bar on the right edge to expand or collapse.
-- **Quick Controls**: 12-sided action buttons for Flashlight, Ring/Vibrate toggle, Wi-Fi, Mobile Data, and Screenshot.
-- **App Launcher**: Quick switch between your most used apps or a custom pinned set.
-- **Design**: Opaque dark surface with subtle spring physics and haptics.
+It's free, open source, has no ads, and doesn't track you in the background.
 
 ---
 
-## Requirements
+## Droidbubble
+
+A dynamic island for Android. It sits quietly in your camera cutout and pops out when something happens.
+
+- **Now playing**: album art, track title, seek bar and playback controls, with a blurred background that matches the artwork.
+- **System events**: see charging wattage, ringer mode changes and other status stuff as it happens.
+- **Notifications**: heads-up alerts you can expand, and reply to without opening the app.
+- **Idle**: when nothing's going on, it tucks itself into the cutout and stays out of the way.
+- **Make it yours**: tweak position, size, spring feel, font, and the order of the layout layers.
+
+## Droidbar
+
+A slim bar on the right edge of the screen. Tap it to open, tap again to close.
+
+- **Quick toggles**: flashlight, ring/vibrate, Wi-Fi, mobile data and screenshot.
+- **Apps**: jump to the apps you use most, or pin your own.
+- Dark, with a bit of spring and haptic feedback so it feels good to use.
+
+---
+
+## What you need
 
 - Android 13 or newer
-- Permissions:
-  - **Display over other apps** (Draw overlays)
-  - **Accessibility Service** (Edge touch detection & system actions like screenshot)
-  - **Notification Listener** (Media metadata and incoming alert banners)
+- A few permissions, since this is an overlay app:
+  - **Display over other apps**, to draw on top of everything
+  - **Accessibility service**, for edge touches and actions like screenshots
+  - **Notification access**, to read what's playing and show incoming alerts
 
----
-
-## Building
-
-```bash
-git clone https://github.com/Velocity081/droidtools.git
-cd droidtools
-./gradlew assembleRelease
-```
-
-The APK will be output to `app/build/outputs/apk/release/Droidtools.apk`.
+Nothing leaves your phone.
 
 ---
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+MIT. See [LICENSE](LICENSE).
