@@ -265,7 +265,7 @@ fun DroidbarOverlay(
             bottomEnd = endRadius
         )
 
-        val yOffsetDp = if (isExpanded) settings.droidbarYOffsetDp.dp else 0.dp
+        val yOffsetDp = if (isWindowExpanded) settings.droidbarYOffsetDp.dp else 0.dp
 
         // The Droidbar surface: customizable opacity, NO outline, smooth collapse and bounce expand
         Box(
@@ -327,12 +327,12 @@ fun DroidbarOverlay(
                             val containerColor = if (isFlashlightActive) {
                                 MaterialTheme.colorScheme.primaryContainer
                             } else {
-                                Color.White.copy(alpha = 0.10f)
+                                Color(0xFF262628)
                             }
                             val contentColor = if (isFlashlightActive) {
                                 MaterialTheme.colorScheme.primary
                             } else {
-                                Color.White.copy(alpha = 0.85f)
+                                Color.White
                             }
 
                             Surface(
@@ -367,12 +367,12 @@ fun DroidbarOverlay(
                             val containerColor = if (isVibrate) {
                                 MaterialTheme.colorScheme.primaryContainer
                             } else {
-                                Color.White.copy(alpha = 0.10f)
+                                Color(0xFF262628)
                             }
                             val contentColor = if (isVibrate) {
                                 MaterialTheme.colorScheme.primary
                             } else {
-                                Color.White.copy(alpha = 0.85f)
+                                Color.White
                             }
 
                             Surface(
@@ -443,12 +443,12 @@ fun DroidbarOverlay(
                             val containerColor = if (isWifiEnabled) {
                                 MaterialTheme.colorScheme.primaryContainer
                             } else {
-                                Color.White.copy(alpha = 0.10f)
+                                Color(0xFF262628)
                             }
                             val contentColor = if (isWifiEnabled) {
                                 MaterialTheme.colorScheme.primary
                             } else {
-                                Color.White.copy(alpha = 0.85f)
+                                Color.White
                             }
 
                             Surface(
@@ -483,12 +483,12 @@ fun DroidbarOverlay(
                             val containerColor = if (isMobileDataActive) {
                                 MaterialTheme.colorScheme.primaryContainer
                             } else {
-                                Color.White.copy(alpha = 0.10f)
+                                Color(0xFF262628)
                             }
                             val contentColor = if (isMobileDataActive) {
                                 MaterialTheme.colorScheme.primary
                             } else {
-                                Color.White.copy(alpha = 0.85f)
+                                Color.White
                             }
 
                             Surface(
@@ -524,7 +524,7 @@ fun DroidbarOverlay(
                                 modifier = Modifier
                                     .width(32.dp)
                                     .height(1.dp)
-                                    .background(Color.White.copy(alpha = 0.15f))
+                                    .background(Color(0xFF38383A))
                             )
                         }
 
@@ -567,8 +567,9 @@ private fun DroidbarAppItem(
                 scaleX = bounceScale
                 scaleY = bounceScale
             },
-        shape = RoundedCornerShape(14.dp),
-        color = Color.Transparent,
+        shape = M3CookieShape,
+        color = Color(0xFF262628),
+        contentColor = Color.White,
         onClick = {
             triggerBounce()
             if (hapticsEnabled) {
@@ -582,7 +583,7 @@ private fun DroidbarAppItem(
                 Image(
                     bitmap = app.iconBitmap.asImageBitmap(),
                     contentDescription = app.label,
-                    modifier = Modifier.size(38.dp)
+                    modifier = Modifier.size(32.dp)
                 )
             } else {
                 Icon(

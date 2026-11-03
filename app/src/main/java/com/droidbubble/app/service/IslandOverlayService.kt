@@ -771,8 +771,9 @@ class IslandOverlayService : Service() {
                 ) { _, _, _, _, _ -> Unit },
                 kotlinx.coroutines.flow.combine(
                     IslandStateManager.isDeviceLocked,
-                    IslandStateManager.alarmInfo
-                ) { _, _ -> Unit }
+                    IslandStateManager.alarmInfo,
+                    IslandStateManager.activeTaskConfirmation
+                ) { _, _, _ -> Unit }
             ) { expanded, _, _, _ -> expanded }.collectLatest { expanded ->
                 updateWindowState(expanded)
             }
@@ -910,6 +911,7 @@ class IslandOverlayService : Service() {
             val isAirplaneMode = currentSettings.showAirplaneMode && IslandStateManager.isAirplaneModeActive
             val isFlashlight = currentSettings.showFlashlight && IslandStateManager.isFlashlightActive
             val isAlarm = currentSettings.showAlarm && IslandStateManager.isAlarmActive
+            val isTaskConfirmation = IslandStateManager.isTaskConfirmationActive
             val isOccupied = (currentSettings.showCalls && IslandStateManager.isCallActive) ||
                     (currentSettings.showMedia && IslandStateManager.isMediaActive) ||
                     (currentSettings.showNotifications && IslandStateManager.isNotificationActive) ||
@@ -921,7 +923,8 @@ class IslandOverlayService : Service() {
                     isBluetooth ||
                     isRingerMode ||
                     isAirplaneMode ||
-                    isAlarm
+                    isAlarm ||
+                    isTaskConfirmation
             val hasPersistentWidgets = currentSettings.showFps || currentSettings.showWeather || currentSettings.showNetworkSpeed || isAlarm
             val shouldShowCompact = isOccupied || currentSettings.alwaysShowPill || hasPersistentWidgets
 

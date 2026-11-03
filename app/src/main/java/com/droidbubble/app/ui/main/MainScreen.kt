@@ -239,7 +239,8 @@ enum class MainScreenPage {
     GENERAL,
     MEDIA_PLAYER,
     DROIDBAR,
-    DROIDBAR_APPS
+    DROIDBAR_APPS,
+    TASKS
 }
 
 
@@ -380,6 +381,7 @@ fun MainScreen(
     var showMediaPlayerPage by remember { mutableStateOf(false) }
     var showDroidbarPage by remember { mutableStateOf(false) }
     var showDroidbarAppsPage by remember { mutableStateOf(false) }
+    var showTasksPage by remember { mutableStateOf(false) }
     var showFeedbackSheet by remember { mutableStateOf(false) }
     var feedbackType by remember { mutableStateOf(FeedbackType.BUG) }
     var feedbackTitle by remember { mutableStateOf("") }
@@ -414,6 +416,7 @@ fun MainScreen(
     }
 
     val currentNavPage = when {
+        showTasksPage -> MainScreenPage.TASKS
         showDroidbarAppsPage -> MainScreenPage.DROIDBAR_APPS
         showDroidbarPage -> MainScreenPage.DROIDBAR
         showMediaPlayerPage -> MainScreenPage.MEDIA_PLAYER
@@ -500,6 +503,12 @@ fun MainScreen(
                     settings = settings,
                     onUpdateSettings = { viewModel.updateSettings(it) },
                     onBack = { showDroidbarAppsPage = false },
+                    modifier = modifier
+                )
+            }
+            MainScreenPage.TASKS -> {
+                com.droidbubble.app.tasks.TasksPage(
+                    onBack = { showTasksPage = false },
                     modifier = modifier
                 )
             }
@@ -669,7 +678,7 @@ fun MainScreen(
                                     )
                                 }
 
-                                SettingsCardItem(position = GroupPosition.BOTTOM) {
+                                SettingsCardItem(position = GroupPosition.MIDDLE) {
                                     ListItem(
                                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                                         headlineContent = { Text("Droidbar", fontWeight = FontWeight.SemiBold) },
@@ -699,6 +708,39 @@ fun MainScreen(
                                             )
                                         },
                                         modifier = Modifier.clickable { showDroidbarPage = true }
+                                    )
+                                }
+
+                                SettingsCardItem(position = GroupPosition.BOTTOM) {
+                                    ListItem(
+                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                        headlineContent = { Text("Tasks", fontWeight = FontWeight.SemiBold) },
+                                        leadingContent = {
+                                            Surface(
+                                                modifier = Modifier.size(38.dp),
+                                                shape = M3Cookie6Shape,
+                                                color = MaterialTheme.colorScheme.primaryContainer,
+                                                contentColor = MaterialTheme.colorScheme.primary
+                                            ) {
+                                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Bolt,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(20.dp),
+                                                        tint = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                            }
+                                        },
+                                        trailingContent = {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                                contentDescription = "Open Tasks",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        },
+                                        modifier = Modifier.clickable { showTasksPage = true }
                                     )
                                 }
                             }

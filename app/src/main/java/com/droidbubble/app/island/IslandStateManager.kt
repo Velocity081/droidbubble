@@ -51,8 +51,10 @@ object IslandStateManager {
             _isDeviceLocked.value = locked
             if (locked && _isExpanded.value) {
                 collapse()
-            }
-        }
+        val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     private val _isBluetoothConnected = MutableStateFlow(false)
@@ -97,7 +99,8 @@ object IslandStateManager {
     fun updateFps(info: FpsInfo) {
         if (_fpsInfo.value != info) {
             _fpsInfo.value = info
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     private val _weatherInfo = MutableStateFlow(WeatherInfo())
@@ -106,7 +109,8 @@ object IslandStateManager {
     fun updateWeather(info: WeatherInfo) {
         if (_weatherInfo.value != info) {
             _weatherInfo.value = info
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     private val _networkSpeedInfo = MutableStateFlow(NetworkSpeedInfo())
@@ -115,7 +119,8 @@ object IslandStateManager {
     fun updateNetworkSpeed(info: NetworkSpeedInfo) {
         if (_networkSpeedInfo.value != info) {
             _networkSpeedInfo.value = info
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
 
@@ -132,7 +137,52 @@ object IslandStateManager {
     fun updateAlarm(info: AlarmInfo?) {
         if (_alarmInfo.value != info) {
             _alarmInfo.value = info
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
+    }
+
+    data class TaskConfirmation(
+        val iconName: String,
+        val taskName: String,
+        val timestamp: Long = System.currentTimeMillis()
+    )
+
+    private val _activeTaskConfirmation = MutableStateFlow<TaskConfirmation?>(null)
+    val activeTaskConfirmation: StateFlow<TaskConfirmation?> = _activeTaskConfirmation.asStateFlow()
+    private var taskConfirmationJob: Job? = null
+
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
+
+    fun triggerTaskConfirmation(iconName: String, taskName: String) {
+        _activeTaskConfirmation.value = TaskConfirmation(iconName, taskName)
+        taskConfirmationJob?.cancel()
+        taskConfirmationJob = scope.launch {
+            delay(2200)
+            _activeTaskConfirmation.value = null
         }
+    }
+
+    data class TaskConfirmation(
+        val iconName: String,
+        val taskName: String,
+        val timestamp: Long = System.currentTimeMillis()
+    )
+
+    private val _activeTaskConfirmation = MutableStateFlow<TaskConfirmation?>(null)
+    val activeTaskConfirmation: StateFlow<TaskConfirmation?> = _activeTaskConfirmation.asStateFlow()
+    private var taskConfirmationJob: Job? = null
+
+    fun triggerTaskConfirmation(iconName: String, taskName: String) {
+        _activeTaskConfirmation.value = TaskConfirmation(iconName, taskName)
+        taskConfirmationJob?.cancel()
+        taskConfirmationJob = scope.launch {
+            delay(2200)
+            _activeTaskConfirmation.value = null
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     private val _expandedPriority = MutableStateFlow<IslandPriority?>(null)
@@ -213,7 +263,8 @@ object IslandStateManager {
             if (dismissMediaOnPause && !media.isPlaying) return false
             // Keep active whenever a media session exists with a title so the island remains visible & expandable when paused!
             return media.title.isNotBlank()
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
 
     val isProgressActive: Boolean
         get() = _activeProgress.value != null
@@ -255,8 +306,10 @@ object IslandStateManager {
                 _activeNotification.value != null -> IslandPriority.POP_NOTIFICATION
                 isAlarmActive -> IslandPriority.ALARM
                 else -> IslandPriority.IDLE
-            }
-        }
+        val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
 
     val activeExpandedPriority: IslandPriority
         get() = _expandedPriority.value ?: currentPriority
@@ -267,7 +320,8 @@ object IslandStateManager {
         _maxFlashlightLevel.value = 4
         if (!enabled && _isExpanded.value && (_expandedPriority.value == IslandPriority.FLASHLIGHT || !isOccupied)) {
             collapse()
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     fun updateFlashlightLevel(level: Int) {
@@ -285,7 +339,8 @@ object IslandStateManager {
         onTurnOffFlashlight?.invoke()
         if (_isExpanded.value && (_expandedPriority.value == IslandPriority.FLASHLIGHT || !isOccupied)) {
             collapse()
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     fun triggerUnlockEvent() {
@@ -296,7 +351,8 @@ object IslandStateManager {
             delay(1500) // 1.5 seconds as requested
             _isUnlocked.value = false
             android.util.Log.d("IslandStateManager", "triggerUnlockEvent() finished: isUnlocked reset to false")
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     fun triggerBluetoothEvent() {
@@ -307,7 +363,8 @@ object IslandStateManager {
             delay(1500) // 1.5 seconds exact same as unlock
             _isBluetoothConnected.value = false
             android.util.Log.d("IslandStateManager", "triggerBluetoothEvent() finished: isBluetoothConnected reset to false")
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     fun triggerRingerModeEvent(mode: RingerMode) {
@@ -318,7 +375,8 @@ object IslandStateManager {
             delay(1500) // Should last only 1.5 seconds on screen as requested!
             _activeRingerMode.value = null
             android.util.Log.d("IslandStateManager", "triggerRingerModeEvent finished: reset to null")
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     fun triggerAirplaneModeEvent(isOn: Boolean) {
@@ -329,7 +387,8 @@ object IslandStateManager {
             delay(1500) // Stay visible for 1.5 seconds exact matching Ring mode duration
             _activeAirplaneMode.value = null
             android.util.Log.d("IslandStateManager", "triggerAirplaneModeEvent finished: reset to null")
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     fun triggerChargingEvent(percentage: Int, wattage: Double? = null) {
@@ -338,27 +397,32 @@ object IslandStateManager {
         chargingJob = scope.launch {
             delay(3000)
             _activeCharging.value = null
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     fun updateChargingWattage(wattage: Double?) {
         val current = _activeCharging.value
         if (current != null) {
             _activeCharging.value = current.copy(wattage = wattage)
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
         val currentPersistent = _persistentCharging.value
         if (currentPersistent != null) {
             _persistentCharging.value = currentPersistent.copy(wattage = wattage)
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     fun updatePersistentCharging(isCharging: Boolean, percentage: Int, wattage: Double? = null) {
         if (isCharging) {
             val currentWattage = wattage ?: _persistentCharging.value?.wattage
             _persistentCharging.value = ChargingInfo(percentage.coerceIn(0, 100), currentWattage)
-        } else {
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null else {
             _persistentCharging.value = null
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     fun updateMedia(media: MediaInfo?) {
@@ -366,29 +430,37 @@ object IslandStateManager {
             _activeMedia.value = null
             if (_isExpanded.value && (_expandedPriority.value == IslandPriority.MEDIA || !isOccupied)) {
                 collapse()
-            }
+        val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
             return
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
         if (media != null && media.packageName == dismissedMediaPackage) {
             if (media.isPlaying) {
                 // Playback resumed, un-dismiss!
                 dismissedMediaPackage = null
-            } else {
+        val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null else {
                 // Still dismissed by user swipe
                 _activeMedia.value = null
                 if (_isExpanded.value && (_expandedPriority.value == IslandPriority.MEDIA || !isOccupied)) {
                     collapse()
-                }
+            val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
                 return
-            }
-        }
+        val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
         _activeMedia.value = media
         if (media == null && _isExpanded.value && (_expandedPriority.value == IslandPriority.MEDIA || !isOccupied)) {
             collapse()
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
         if (media?.isPlaying == true) {
             lastMediaPlayingTime = System.currentTimeMillis()
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     fun dismissMedia() {
@@ -398,20 +470,23 @@ object IslandStateManager {
         _activeMedia.value = null
         if (_isExpanded.value) {
             collapse()
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     fun unDismissMedia(packageName: String? = null) {
         if (packageName == null || dismissedMediaPackage == packageName) {
             dismissedMediaPackage = null
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     fun updateNotification(notification: NotificationInfo?) {
         if (notification != null && notification.hasProgress) {
             updateProgress(notification)
             return
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
         autoDismissNotificationJob?.cancel()
         _activeNotification.value = notification
         if (notification == null) {
@@ -419,11 +494,15 @@ object IslandStateManager {
             if (_isExpanded.value && (_expandedPriority.value == IslandPriority.POP_NOTIFICATION || !isOccupied)) {
                 if (!isOccupied) {
                     collapse()
-                } else {
+            val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null else {
                     _expandedPriority.value = null
-                }
-            }
-        } else {
+            val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
+        val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null else {
             triggerPopIn()
             if (autoDismissNotifications) {
                 val notifKey = notification.key
@@ -431,10 +510,14 @@ object IslandStateManager {
                     delay(autoDismissNotificationSeconds * 1000L)
                     if (_activeNotification.value?.key == notifKey && (!_isExpanded.value || _expandedPriority.value != IslandPriority.POP_NOTIFICATION)) {
                         dismissCurrentNotification()
-                    }
-                }
-            }
-        }
+                val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
+            val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
+        val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     fun updateProgress(progress: NotificationInfo?) {
@@ -443,11 +526,15 @@ object IslandStateManager {
             if (_isExpanded.value && (_expandedPriority.value == IslandPriority.PROGRESS || !isOccupied)) {
                 if (!isOccupied) {
                     collapse()
-                } else {
+            val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null else {
                     _expandedPriority.value = null
-                }
-            }
-        }
+            val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
+        val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     fun removeNotification(key: String) {
@@ -457,14 +544,17 @@ object IslandStateManager {
             _activeNotification.value = null
             _isPopInActive.value = false
             removed = true
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
         if (_activeProgress.value?.key == key) {
             _activeProgress.value = null
             removed = true
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
         if (removed && _isExpanded.value && !isOccupied) {
             collapse()
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     fun triggerPopIn() {
@@ -473,7 +563,8 @@ object IslandStateManager {
         popInJob = scope.launch {
             delay(4500) // Bubble pop-in for 4.5 seconds then auto-shrink to compact
             _isPopInActive.value = false
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     fun dismissCurrentNotification(): Boolean {
@@ -485,10 +576,13 @@ object IslandStateManager {
         if (_isExpanded.value && (_expandedPriority.value == IslandPriority.POP_NOTIFICATION || !isOccupied)) {
             if (!isOccupied) {
                 collapse()
-            } else {
+        val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null else {
                 _expandedPriority.value = null
-            }
-        }
+        val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
         return true
     }
 
@@ -499,10 +593,13 @@ object IslandStateManager {
         if (_isExpanded.value && (_expandedPriority.value == IslandPriority.PROGRESS || !isOccupied)) {
             if (!isOccupied) {
                 collapse()
-            } else {
+        val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null else {
                 _expandedPriority.value = null
-            }
-        }
+        val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
         return true
     }
 
@@ -511,7 +608,8 @@ object IslandStateManager {
         _screenRecordingState.value = state
         if (wasRecording && !state.isRecording && _isExpanded.value && (_expandedPriority.value == IslandPriority.SCREEN_RECORDING || !isOccupied)) {
             collapse()
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     fun updateCallState(state: ActiveCallState) {
@@ -519,14 +617,16 @@ object IslandStateManager {
         _activeCallState.value = state
         if (wasActive && !state.isActive && _isExpanded.value && (_expandedPriority.value == IslandPriority.CALL || !isOccupied)) {
             collapse()
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 
     fun expand(priority: IslandPriority? = null) {
         val resolved = priority ?: currentPriority
         if (resolved == IslandPriority.POP_NOTIFICATION) {
             autoDismissNotificationJob?.cancel()
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
         _expandedPriority.value = priority
         _isExpanded.value = true
     }
@@ -540,8 +640,10 @@ object IslandStateManager {
     fun toggleExpand(priority: IslandPriority? = null) {
         if (_isExpanded.value) {
             collapse()
-        } else {
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null else {
             expand(priority)
-        }
+    val isTaskConfirmationActive: Boolean
+        get() = _activeTaskConfirmation.value != null
     }
 }

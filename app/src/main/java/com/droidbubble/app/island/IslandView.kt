@@ -545,6 +545,16 @@ fun IslandOverlayRoot(
     val isRingerMode = allowInOrientation && settings.showRingerMode && activeRingerMode != null && !isCharging && !isUnlock && !isBluetooth
     val isAirplaneMode = allowInOrientation && settings.showAirplaneMode && activeAirplaneMode != null && !isCharging && !isUnlock && !isBluetooth && !isRingerMode
 
+    val activeTaskConfirmation by IslandStateManager.activeTaskConfirmation.collectAsState()
+    var lastTaskConfirmation by remember { mutableStateOf<IslandStateManager.TaskConfirmation?>(null) }
+    LaunchedEffect(activeTaskConfirmation) {
+        if (activeTaskConfirmation != null) {
+            lastTaskConfirmation = activeTaskConfirmation
+        }
+    }
+    val displayTaskConfirmation = activeTaskConfirmation ?: lastTaskConfirmation
+    val isTaskConfirmation = allowInOrientation && activeTaskConfirmation != null && !isCharging && !isUnlock
+
     val alarmInfo by IslandStateManager.alarmInfo.collectAsState()
 
     val isAlarm = allowInOrientation && settings.showAlarm && IslandStateManager.isAlarmActive
@@ -554,7 +564,7 @@ fun IslandOverlayRoot(
     val isNetworkSpeed = allowInOrientation && settings.showNetworkSpeed
     val hasPersistent = isFps || isWeather || isNetworkSpeed || isAlarm
 
-    val isOccupied = allowInOrientation && (isCall || isRecording || isNotification || isMedia || isProgress || isCharging || isPersistentCharging || isUnlock || isBluetooth || isFlashlight || isRingerMode || isAirplaneMode || hasPersistent)
+    val isOccupied = allowInOrientation && (isCall || isRecording || isNotification || isMedia || isProgress || isCharging || isPersistentCharging || isUnlock || isBluetooth || isFlashlight || isRingerMode || isAirplaneMode || isTaskConfirmation || hasPersistent)
 
     // Unified priority list ordered dynamically by settings.featurePriorities (with persistent views at the bottom by default):
     val orderedActivePriorities = buildList {
@@ -587,8 +597,8 @@ fun IslandOverlayRoot(
     }
 
     val activeCount = orderedActivePriorities.size
-    val isDual = !isCharging && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode && activeCount >= 2
-    val isTriple = !isCharging && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode && activeCount >= 3
+    val isDual = !isCharging && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode && !isTaskConfirmation && activeCount >= 2
+    val isTriple = !isCharging && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode && !isTaskConfirmation && activeCount >= 3
     val isCompactDual = isDual && settings.showDualActivityInCompact
     val speed = settings.animationSpeed.coerceIn(0.5f, 2.0f)
     val speedSq = speed * speed
@@ -694,7 +704,7 @@ fun IslandOverlayRoot(
 
     // Animation Specs (dynamically scaled by settings.animationSpeed):
     val sizeAnimSpecDp = when {
-        isCharging || isUnlock || isBluetooth || isRingerMode || isAirplaneMode -> spring<androidx.compose.ui.unit.Dp>(
+        isCharging || isUnlock || isBluetooth || isRingerMode || isAirplaneMode || isTaskConfirmation -> spring<androidx.compose.ui.unit.Dp>(
             dampingRatio = settings.appearDamping,
             stiffness = settings.appearStiffness * speedSq
         )
@@ -709,7 +719,7 @@ fun IslandOverlayRoot(
     }
 
     val sizeAnimSpecFloat = when {
-        isCharging || isUnlock || isBluetooth || isRingerMode -> spring<Float>(
+        isCharging || isUnlock || isBluetooth || isRingerMode || isAirplaneMode || isTaskConfirmation -> spring<Float>(
             dampingRatio = settings.appearDamping,
             stiffness = settings.appearStiffness * speedSq
         )
@@ -956,6 +966,12 @@ fun IslandOverlayRoot(
         label = "chargingProgress"
     )
 
+    val taskConfirmationAlpha by animateFloatAsState(
+        targetValue = if (isTaskConfirmation) 1f else 0f,
+        animationSpec = tween(durationMillis = (130 / speed).roundToInt(), easing = FastOutSlowInEasing),
+        label = "taskConfirmationAlpha"
+    )
+
     // Airplane Mode animations:
     val airplaneContentAlpha by animateFloatAsState(
         targetValue = if (isAirplaneMode) 1f else 0f,
@@ -1025,6 +1041,7 @@ fun IslandOverlayRoot(
     val unlockIslandWidth = (settings.widthDp * 0.82f).dp.coerceAtLeast(96.dp) + (teardropEarRadius * 2f)
     val ringerIslandWidth = (110.dp + (settings.widthDp * 0.35f).dp).coerceIn(150.dp, 205.dp) + (teardropEarRadius * 2f)
     val airplaneIslandWidth = (105.dp + (settings.widthDp * 0.35f).dp).coerceIn(148.dp, 200.dp) + (teardropEarRadius * 2f)
+    val taskConfirmationIslandWidth = (115.dp + (settings.widthDp * 0.35f).dp).coerceIn(150.dp, 205.dp) + (teardropEarRadius * 2f)
     val fpsIslandWidth = (75.dp + (settings.widthDp * 0.35f).dp).coerceIn(120.dp, 195.dp) + (teardropEarRadius * 2f)
     val weatherIslandWidth = (70.dp + (settings.widthDp * 0.35f).dp).coerceIn(102.dp, 185.dp) + (teardropEarRadius * 2f)
     val networkSpeedIslandWidth = (85.dp + (settings.widthDp * 0.35f).dp).coerceIn(132.dp, 205.dp) + (teardropEarRadius * 2f)
@@ -1066,6 +1083,7 @@ fun IslandOverlayRoot(
         !isOccupied && !settings.alwaysShowPill && !hasPersistent -> 0.dp
         isExpanded -> 0.dp // Shrinks horizontally into 0 width while card expands!
         isCharging || (!isCompactDual && primaryPriority == IslandPriority.CHARGING) -> chargingIslandWidth
+        isTaskConfirmation -> taskConfirmationIslandWidth
         isRingerMode -> ringerIslandWidth
         isAirplaneMode -> airplaneIslandWidth
         isUnlock || isBluetooth -> unlockIslandWidth
@@ -2841,6 +2859,13 @@ fun IslandOverlayRoot(
                             airplaneSecondaryAlpha = airplaneSecondaryAlpha,
                             airplaneSecondaryScale = airplaneSecondaryScale,
                             flightProgress = airplaneFlightProgress.value,
+                            teardropEarRadius = teardropEarRadius
+                        )
+                    } else if (isTaskConfirmation || taskConfirmationAlpha > 0.01f) {
+                        TaskConfirmationPill(
+                            confirmation = displayTaskConfirmation,
+                            isLeftCutout = settings.isLeftCutout,
+                            contentAlpha = taskConfirmationAlpha,
                             teardropEarRadius = teardropEarRadius
                         )
                     } else if (compactAlpha > 0.01f && animatedCompactWidth > 24.dp) {
@@ -6898,6 +6923,93 @@ fun ExpandedAlarmView(
                 contentDescription = "Open Alarms",
                 modifier = Modifier.size(actionIconSize)
             )
+        }
+    }
+}
+
+
+@Composable
+private fun TaskConfirmationPill(
+    confirmation: IslandStateManager.TaskConfirmation?,
+    isLeftCutout: Boolean,
+    contentAlpha: Float,
+    teardropEarRadius: Dp
+) {
+    if (confirmation == null) return
+    val checkmarkScale = remember { Animatable(0.4f) }
+    LaunchedEffect(confirmation.timestamp) {
+        checkmarkScale.snapTo(0.4f)
+        checkmarkScale.animateTo(
+            1f,
+            spring(dampingRatio = 0.52f, stiffness = 550f)
+        )
+    }
+
+    if (isLeftCutout) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = 38.dp, end = 12.dp)
+                .graphicsLayer { alpha = contentAlpha },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End)
+        ) {
+            Icon(
+                imageVector = com.droidbubble.app.tasks.TaskIcons.getIcon(confirmation.iconName),
+                contentDescription = confirmation.taskName,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = "Success",
+                tint = Color(0xFF30D158),
+                modifier = Modifier
+                    .size(18.dp)
+                    .graphicsLayer {
+                        scaleX = checkmarkScale.value
+                        scaleY = checkmarkScale.value
+                    }
+            )
+        }
+    } else {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 10.dp + teardropEarRadius)
+                .graphicsLayer { alpha = contentAlpha },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Icon(
+                    imageVector = com.droidbubble.app.tasks.TaskIcons.getIcon(confirmation.iconName),
+                    contentDescription = confirmation.taskName,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(19.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(28.dp))
+
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Success",
+                    tint = Color(0xFF30D158),
+                    modifier = Modifier
+                        .size(19.dp)
+                        .graphicsLayer {
+                            scaleX = checkmarkScale.value
+                            scaleY = checkmarkScale.value
+                        }
+                )
+            }
         }
     }
 }
