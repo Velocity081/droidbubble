@@ -4,16 +4,6 @@
 
 # Droidtools
 
-Droidtools is a lightweight suite of system overlay utilities for Android, built natively in Kotlin with Jetpack Compose and Material 3.
-
-It packages two everyday utilities into one app:
-- **Droidbubble**: An adaptive dynamic island around your front camera cutout for media, notifications, and system events.
-- **Droidbar**: A slide-out edge bar on the right side of the screen for quick toggles and frequent apps.
-
-Free, open source, no ads, and no background tracking.
-
----
-
 <p align="center">
   <a href="https://github.com/Velocity081/droidtools/releases">
     <img src="https://img.shields.io/github/v/release/Velocity081/droidtools?include_prereleases&style=flat-square&label=Release" alt="Release" />
@@ -26,6 +16,16 @@ Free, open source, no ads, and no background tracking.
     <img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="License" />
   </a>
 </p>
+
+---
+
+Droidtools is a lightweight suite of system overlay utilities for Android, built natively in Kotlin with Jetpack Compose and Material 3.
+
+It packages two everyday utilities into one app:
+- **Droidbubble**: An adaptive dynamic island around your front camera cutout for media, notifications, and system events.
+- **Droidbar**: A slide-out edge bar on the right side of the screen for quick toggles and frequent apps.
+
+Free, open source, no ads, and no background tracking.
 
 ---
 
