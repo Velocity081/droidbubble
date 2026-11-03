@@ -86,7 +86,7 @@ fun DroidbarOverlay(
     val view = LocalView.current
     fun performTapHaptic() {
         if (settings.droidbarHapticsEnabled) {
-            performTapHaptic()
+            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
         }
     }
     val configuration = LocalConfiguration.current
