@@ -44,6 +44,15 @@ fun TasksPage(
     var isCreatingNew by remember { mutableStateOf(false) }
     var shortcutToDelete by remember { mutableStateOf<TaskShortcut?>(null) }
 
+    BackHandler(onBack = {
+        if (isCreatingNew || editingShortcut != null) {
+            isCreatingNew = false
+            editingShortcut = null
+        } else {
+            onBack()
+        }
+    })
+
     if (isCreatingNew || editingShortcut != null) {
         TaskEditorScreen(
             initialShortcut = editingShortcut,
@@ -59,8 +68,6 @@ fun TasksPage(
         )
         return
     }
-
-    BackHandler(onBack = onBack)
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -142,7 +149,11 @@ fun TasksPage(
                         shortcut = shortcut,
                         onRun = {
                             view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                            TaskExecutor.execute(context, shortcut)
+                            runCatching {
+                                TaskExecutor.execute(context, shortcut)
+                            }.onFailure { e ->
+                                android.util.Log.e("TasksPage", "Task error", e)
+                            }
                         },
                         onEdit = { editingShortcut = shortcut },
                         onDelete = { shortcutToDelete = shortcut }

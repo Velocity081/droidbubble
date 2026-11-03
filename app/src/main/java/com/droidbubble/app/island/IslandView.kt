@@ -1101,7 +1101,7 @@ fun IslandOverlayRoot(
     // When expanded, Card 1 slides down to (settings.topOffsetDp + 52).dp, widening to 340.dp * scale.
     // When minimising, Card 1 shrinks back to 0.dp width (transitioning into the small circle at the punch hole) as it slides back up.
     val screenWidth = configuration.screenWidthDp.dp
-    val targetCard1Width = if (isExpanded && !isCharging && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode) {
+    val targetCard1Width = if (isExpanded && !isCharging && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode && !isTaskConfirmation) {
         (340.dp * settings.expandedScale).coerceAtMost(screenWidth - 16.dp)
     } else {
         0.dp
@@ -2538,7 +2538,7 @@ fun IslandOverlayRoot(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                             onClick = {
-                                if (!isExpanded && (isOccupied || hasPersistent) && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode) {
+                                if (!isExpanded && (isOccupied || hasPersistent) && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode && !isTaskConfirmation) {
                                     triggerHaptic()
                                     IslandStateManager.expand(primaryPriority)
                                 } else if (!isExpanded && !isOccupied && !hasPersistent && settings.alwaysShowPill) {
@@ -2590,7 +2590,7 @@ fun IslandOverlayRoot(
                                 }
                             },
                             onLongClick = {
-                                if (!isExpanded && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode) {
+                                if (!isExpanded && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode && !isTaskConfirmation) {
                                     triggerHaptic()
                                     openAppForPriority(
                                         context = context,
@@ -2949,7 +2949,7 @@ fun IslandOverlayRoot(
                 } else {
                     animatedBubbleOffsetX + (bubbleSize / 2f)
                 }
-                val rightContentEdgeDp = if (!isCharging && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode && animatedBubbleOffsetX > 1.dp) {
+                val rightContentEdgeDp = if (!isCharging && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode && !isTaskConfirmation && animatedBubbleOffsetX > 1.dp) {
                     maxOf(mainPillRightEdge, bubbleRightEdge)
                 } else {
                     mainPillRightEdge

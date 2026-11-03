@@ -158,6 +158,15 @@ object TaskExecutor {
                         RingerActionType.TOGGLE -> if (current == AudioManager.RINGER_MODE_VIBRATE) AudioManager.RINGER_MODE_NORMAL else AudioManager.RINGER_MODE_VIBRATE
                     }
                     am.ringerMode = target
+                }.onFailure {
+                    // On newer Android versions, modifying ringer mode without DND/notification policy access
+                    // throws SecurityException; fallback to sound settings
+                    runCatching {
+                        val intent = Intent(Settings.ACTION_SOUND_SETTINGS).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    }
                 }
             }
         }

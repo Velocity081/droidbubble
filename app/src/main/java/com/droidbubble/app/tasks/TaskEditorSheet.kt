@@ -1,5 +1,7 @@
 package com.droidbubble.app.tasks
 
+import androidx.activity.compose.BackHandler
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,6 +46,16 @@ fun TaskEditorScreen(
     var showAddActionDialog by remember { mutableStateOf(false) }
     var showSubActionDialog by remember { mutableStateOf<String?>(null) }
     var showAppPicker by remember { mutableStateOf(false) }
+
+    BackHandler {
+        when {
+            showIconPicker -> showIconPicker = false
+            showSubActionDialog != null -> showSubActionDialog = null
+            showAddActionDialog -> showAddActionDialog = false
+            showAppPicker -> showAppPicker = false
+            else -> onBack()
+        }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
