@@ -1,5 +1,6 @@
 package com.droidbubble.app.droidbar
 
+import android.accessibilityservice.AccessibilityService
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -7,6 +8,11 @@ import android.content.IntentFilter
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.media.AudioManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.wifi.WifiManager
+import android.os.Build
+import android.provider.Settings
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -15,11 +21,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,14 +31,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.FlashlightOff
 import androidx.compose.material.icons.filled.FlashlightOn
 import androidx.compose.material.icons.filled.NotificationsActive
-import androidx.compose.material.icons.filled.VerticalSplit
+import androidx.compose.material.icons.filled.Screenshot
+import androidx.compose.material.icons.filled.SignalCellularAlt
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -57,7 +65,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
@@ -65,7 +73,8 @@ import com.droidbubble.app.island.IslandStateManager
 import com.droidbubble.app.island.M3CookieShape
 import com.droidbubble.app.model.IslandSettings
 import com.droidbubble.app.service.IslandAccessibilityService
-import kotlinx.coroutines.CoroutineScope
+import com.droidbubble.app.service.ScreenRecordPromptActivity
+import com.droidbubble.app.service.ScreenRecordingService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -78,31 +87,64 @@ fun DroidbarOverlay(
     onExpandChanged: (Boolean) -> Unit
 ) {
     val view = LocalView.current
+    val configuration = LocalConfiguration.current
     val coroutineScope = rememberCoroutineScope()
     val animProgress = remember { Animatable(0f) }
     var isExpanded by remember { mutableStateOf(false) }
     var isWindowExpanded by remember { mutableStateOf(false) }
     var apps by remember { mutableStateOf<List<BarAppInfo>>(emptyList()) }
 
-    // Split-screen selection state
-    var selectedSplitFirstApp by remember { mutableStateOf<BarAppInfo?>(null) }
-
+    // Flashlight & Screen Recording states from IslandStateManager
     val isFlashlightOn by IslandStateManager.isFlashlightOn.collectAsState()
+    val screenRecState by IslandStateManager.screenRecordingState.collectAsState()
+    val isRecordingActive = screenRecState.isRecording
 
+    // Ringer mode state
     var currentRingerMode by remember {
         val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         mutableIntStateOf(am?.ringerMode ?: AudioManager.RINGER_MODE_NORMAL)
     }
 
+    // Wi-Fi state
+    var isWifiEnabled by remember {
+        val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+        mutableStateOf(wm?.isWifiEnabled == true)
+    }
+
+    // Mobile data connectivity state
+    var isMobileDataActive by remember {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        val caps = cm?.getNetworkCapabilities(cm.activeNetwork)
+        mutableStateOf(caps?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true)
+    }
+
     DisposableEffect(context) {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(c: Context?, intent: Intent?) {
-                val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-                currentRingerMode = am?.ringerMode ?: AudioManager.RINGER_MODE_NORMAL
+                when (intent?.action) {
+                    AudioManager.RINGER_MODE_CHANGED_ACTION,
+                    "android.media.INTERNAL_RINGER_MODE_CHANGED_ACTION" -> {
+                        val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+                        currentRingerMode = am?.ringerMode ?: AudioManager.RINGER_MODE_NORMAL
+                    }
+                    WifiManager.WIFI_STATE_CHANGED_ACTION -> {
+                        val state = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, WifiManager.WIFI_STATE_UNKNOWN)
+                        isWifiEnabled = (state == WifiManager.WIFI_STATE_ENABLED)
+                    }
+                    ConnectivityManager.CONNECTIVITY_ACTION -> {
+                        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                        val caps = cm?.getNetworkCapabilities(cm.activeNetwork)
+                        isMobileDataActive = (caps?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true)
+                    }
+                }
             }
         }
-        val filter = IntentFilter(AudioManager.RINGER_MODE_CHANGED_ACTION).apply {
+        val filter = IntentFilter().apply {
+            addAction(AudioManager.RINGER_MODE_CHANGED_ACTION)
             addAction("android.media.INTERNAL_RINGER_MODE_CHANGED_ACTION")
+            addAction(WifiManager.WIFI_STATE_CHANGED_ACTION)
+            @Suppress("DEPRECATION")
+            addAction(ConnectivityManager.CONNECTIVITY_ACTION)
         }
         context.registerReceiver(receiver, filter)
         onDispose {
@@ -121,7 +163,6 @@ fun DroidbarOverlay(
     // Animate expand and collapse smoothly with single Animatable
     LaunchedEffect(isExpanded) {
         if (isExpanded) {
-            selectedSplitFirstApp = null
             isWindowExpanded = true
             onExpandChanged(true)
             val loadedApps = withContext(Dispatchers.IO) {
@@ -136,7 +177,6 @@ fun DroidbarOverlay(
                 )
             )
         } else {
-            selectedSplitFirstApp = null
             animProgress.animateTo(
                 targetValue = 0f,
                 animationSpec = tween(
@@ -149,22 +189,26 @@ fun DroidbarOverlay(
         }
     }
 
-    val controlCount = (if (settings.droidbarShowFlashlight) 1 else 0) + (if (settings.droidbarShowRingMode) 1 else 0)
+    val controlCount = (if (settings.droidbarShowFlashlight) 1 else 0) +
+            (if (settings.droidbarShowRingMode) 1 else 0) +
+            (if (settings.droidbarShowScreenshot) 1 else 0) +
+            (if (settings.droidbarShowWifi) 1 else 0) +
+            (if (settings.droidbarShowMobileData) 1 else 0) +
+            (if (settings.droidbarShowScreenRecord) 1 else 0)
+
     val hasControls = controlCount > 0
     val appCount = apps.size
     val hasApps = appCount > 0
+    val totalItems = controlCount + appCount
 
-    val targetExpandedHeight = when {
-        hasControls && hasApps -> (controlCount * 50 + 12 + appCount * 50 + 24).dp
-        hasControls -> (controlCount * 52 + 24).dp
-        hasApps -> (appCount * 52 + 24).dp
-        else -> 120.dp
-    }.coerceAtLeast(80.dp)
+    val targetExpandedHeight = ((totalItems * 48) + (if (hasControls && hasApps) 14 else 0) + 24).dp.coerceAtLeast(80.dp)
+    val maxAvailableHeight = (configuration.screenHeightDp - 64).dp.coerceAtLeast(180.dp)
+    val finalExpandedHeight = targetExpandedHeight.coerceAtMost(maxAvailableHeight)
 
     val progress = animProgress.value.coerceIn(0f, 1.25f)
 
     val barWidth = (5.dp + (68.dp - 5.dp) * progress).coerceAtLeast(5.dp)
-    val barHeight = (44.dp + (targetExpandedHeight - 44.dp) * progress).coerceAtLeast(44.dp)
+    val barHeight = (44.dp + (finalExpandedHeight - 44.dp) * progress).coerceAtLeast(44.dp)
     val endMargin = (8.dp * progress).coerceAtLeast(0.dp)
 
     // Smooth corner radius interpolation to eliminate corners sharpening before collapse
@@ -188,6 +232,10 @@ fun DroidbarOverlay(
     // Bounce scales for controls
     val (flashlightBounceScale, triggerFlashlightBounce) = rememberBounceScale()
     val (ringerBounceScale, triggerRingerBounce) = rememberBounceScale()
+    val (screenshotBounceScale, triggerScreenshotBounce) = rememberBounceScale()
+    val (wifiBounceScale, triggerWifiBounce) = rememberBounceScale()
+    val (mobileDataBounceScale, triggerMobileDataBounce) = rememberBounceScale()
+    val (recordBounceScale, triggerRecordBounce) = rememberBounceScale()
 
     Box(
         modifier = Modifier
@@ -201,7 +249,6 @@ fun DroidbarOverlay(
                             interactionSource = remember { MutableInteractionSource() }
                         ) {
                             view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                            selectedSplitFirstApp = null
                             isExpanded = false
                         }
                 } else Modifier
@@ -263,11 +310,12 @@ fun DroidbarOverlay(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(vertical = 12.dp, horizontal = 10.dp),
-                        verticalArrangement = Arrangement.SpaceEvenly,
+                            .padding(vertical = 12.dp, horizontal = 10.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Flashlight toggle control (12-sided M3 Cookie Shape, subtle tonal palette, subtle bounce)
+                        // 1. Flashlight toggle control (12-sided M3 Cookie Shape, subtle bounce)
                         if (settings.droidbarShowFlashlight) {
                             val isFlashlightActive = isFlashlightOn
                             val containerColor = if (isFlashlightActive) {
@@ -288,7 +336,7 @@ fun DroidbarOverlay(
                                         scaleX = flashlightBounceScale
                                         scaleY = flashlightBounceScale
                                     },
-                                shape = M3CookieShape, // 12-sided cookie shape
+                                shape = M3CookieShape,
                                 color = containerColor,
                                 contentColor = contentColor,
                                 onClick = {
@@ -307,7 +355,7 @@ fun DroidbarOverlay(
                             }
                         }
 
-                        // Ring mode toggle control: ONLY Ring and Vibrate (12-sided M3 Cookie Shape, subtle bounce)
+                        // 2. Ring mode toggle control: ONLY Ring and Vibrate (12-sided M3 Cookie Shape, subtle bounce)
                         if (settings.droidbarShowRingMode) {
                             val isVibrate = currentRingerMode == AudioManager.RINGER_MODE_VIBRATE
                             val containerColor = if (isVibrate) {
@@ -328,7 +376,7 @@ fun DroidbarOverlay(
                                         scaleX = ringerBounceScale
                                         scaleY = ringerBounceScale
                                     },
-                                shape = M3CookieShape, // 12-sided cookie shape
+                                shape = M3CookieShape,
                                 color = containerColor,
                                 contentColor = contentColor,
                                 onClick = {
@@ -349,6 +397,174 @@ fun DroidbarOverlay(
                             }
                         }
 
+                        // 3. Screenshot control (12-sided M3 Cookie Shape, subtle bounce)
+                        if (settings.droidbarShowScreenshot) {
+                            Surface(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .graphicsLayer {
+                                        scaleX = screenshotBounceScale
+                                        scaleY = screenshotBounceScale
+                                    },
+                                shape = M3CookieShape,
+                                color = Color.White.copy(alpha = 0.10f),
+                                contentColor = Color.White.copy(alpha = 0.85f),
+                                onClick = {
+                                    triggerScreenshotBounce()
+                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    isExpanded = false
+                                    coroutineScope.launch {
+                                        delay(180L)
+                                        val accessibility = IslandAccessibilityService.instance
+                                        if (accessibility != null) {
+                                            accessibility.performGlobalAction(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT)
+                                        }
+                                    }
+                                }
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Screenshot,
+                                        contentDescription = "Screenshot",
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // 4. Wi-Fi toggle control (12-sided M3 Cookie Shape, subtle bounce)
+                        if (settings.droidbarShowWifi) {
+                            val containerColor = if (isWifiEnabled) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                Color.White.copy(alpha = 0.10f)
+                            }
+                            val contentColor = if (isWifiEnabled) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                Color.White.copy(alpha = 0.85f)
+                            }
+
+                            Surface(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .graphicsLayer {
+                                        scaleX = wifiBounceScale
+                                        scaleY = wifiBounceScale
+                                    },
+                                shape = M3CookieShape,
+                                color = containerColor,
+                                contentColor = contentColor,
+                                onClick = {
+                                    triggerWifiBounce()
+                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    isExpanded = false
+                                    toggleOrOpenWifi(context)
+                                }
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Wifi,
+                                        contentDescription = "Wi-Fi",
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // 5. Mobile Data toggle control (12-sided M3 Cookie Shape, subtle bounce)
+                        if (settings.droidbarShowMobileData) {
+                            val containerColor = if (isMobileDataActive) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                Color.White.copy(alpha = 0.10f)
+                            }
+                            val contentColor = if (isMobileDataActive) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                Color.White.copy(alpha = 0.85f)
+                            }
+
+                            Surface(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .graphicsLayer {
+                                        scaleX = mobileDataBounceScale
+                                        scaleY = mobileDataBounceScale
+                                    },
+                                shape = M3CookieShape,
+                                color = containerColor,
+                                contentColor = contentColor,
+                                onClick = {
+                                    triggerMobileDataBounce()
+                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    isExpanded = false
+                                    openMobileDataPanel(context)
+                                }
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.SignalCellularAlt,
+                                        contentDescription = "Mobile Data",
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // 6. Screen Record control: Start recording / Stop recording (12-sided M3 Cookie Shape, subtle bounce)
+                        if (settings.droidbarShowScreenRecord) {
+                            val containerColor = if (isRecordingActive) {
+                                MaterialTheme.colorScheme.errorContainer
+                            } else {
+                                Color.White.copy(alpha = 0.10f)
+                            }
+                            val contentColor = if (isRecordingActive) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                Color.White.copy(alpha = 0.85f)
+                            }
+
+                            Surface(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .graphicsLayer {
+                                        scaleX = recordBounceScale
+                                        scaleY = recordBounceScale
+                                    },
+                                shape = M3CookieShape,
+                                color = containerColor,
+                                contentColor = contentColor,
+                                onClick = {
+                                    triggerRecordBounce()
+                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    if (isRecordingActive) {
+                                        // STOP recording immediately
+                                        IslandStateManager.onStopRecording?.invoke()
+                                        val stopIntent = Intent(context, ScreenRecordingService::class.java).apply {
+                                            action = ScreenRecordingService.ACTION_STOP
+                                        }
+                                        runCatching { context.startService(stopIntent) }
+                                    } else {
+                                        // START recording: collapse Droidbar and launch prompt activity
+                                        isExpanded = false
+                                        val promptIntent = Intent(context, ScreenRecordPromptActivity::class.java).apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        runCatching { context.startActivity(promptIntent) }
+                                    }
+                                }
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = if (isRecordingActive) Icons.Default.Stop else Icons.Default.Videocam,
+                                        contentDescription = if (isRecordingActive) "Stop Recording" else "Start Recording",
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            }
+                        }
+
                         // Subtle divider between controls and apps
                         if (hasControls && hasApps) {
                             Box(
@@ -359,38 +575,18 @@ fun DroidbarOverlay(
                             )
                         }
 
-                        // Apps list with 1-second long-press split screen selection and subtle bounce
+                        // Apps list: standard responsive tap launch with subtle bounce (No split-screen)
                         apps.forEach { app ->
-                            val isFirstSelected = selectedSplitFirstApp?.packageName == app.packageName
-                            val isSplitActive = selectedSplitFirstApp != null
-
                             DroidbarAppItem(
                                 app = app,
-                                isFirstSplitSelected = isFirstSelected,
-                                isSplitModeActive = isSplitActive,
                                 onTap = {
-                                    if (selectedSplitFirstApp == null) {
-                                        // Regular app launch
-                                        val launchIntent = context.packageManager.getLaunchIntentForPackage(app.packageName)?.apply {
-                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                        }
-                                        if (launchIntent != null) {
-                                            runCatching { context.startActivity(launchIntent) }
-                                        }
-                                        isExpanded = false
-                                    } else if (selectedSplitFirstApp?.packageName != app.packageName) {
-                                        // Second app selected for split screen!
-                                        val firstApp = selectedSplitFirstApp!!
-                                        selectedSplitFirstApp = null
-                                        launchSplitScreen(context, firstApp, app)
-                                        isExpanded = false
-                                    } else {
-                                        // Tapped same app again -> cancel selection
-                                        selectedSplitFirstApp = null
+                                    val launchIntent = context.packageManager.getLaunchIntentForPackage(app.packageName)?.apply {
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                     }
-                                },
-                                onLongPress1s = {
-                                    selectedSplitFirstApp = app
+                                    if (launchIntent != null) {
+                                        runCatching { context.startActivity(launchIntent) }
+                                    }
+                                    isExpanded = false
                                 }
                             )
                         }
@@ -404,101 +600,39 @@ fun DroidbarOverlay(
 @Composable
 private fun DroidbarAppItem(
     app: BarAppInfo,
-    isFirstSplitSelected: Boolean,
-    isSplitModeActive: Boolean,
-    onTap: () -> Unit,
-    onLongPress1s: () -> Unit
+    onTap: () -> Unit
 ) {
-    val scale = remember { Animatable(1f) }
-    val coroutineScope = rememberCoroutineScope()
+    val (bounceScale, triggerBounce) = rememberBounceScale()
     val view = LocalView.current
 
-    val triggerBounce: () -> Unit = {
-        coroutineScope.launch {
-            scale.animateTo(0.85f, tween(70))
-            scale.animateTo(1f, spring(dampingRatio = 0.52f, stiffness = 500f))
-        }
-    }
-
-    Box(
+    Surface(
         modifier = Modifier
             .size(44.dp)
             .graphicsLayer {
-                scaleX = scale.value
-                scaleY = scale.value
-            }
-            .then(
-                if (isFirstSplitSelected) {
-                    Modifier
-                        .border(
-                            width = 2.5.dp,
-                            color = MaterialTheme.colorScheme.primary,
-                            shape = RoundedCornerShape(14.dp)
-                        )
-                        .background(
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
-                            shape = RoundedCornerShape(14.dp)
-                        )
-                } else if (isSplitModeActive) {
-                    Modifier
-                        .border(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-                            shape = RoundedCornerShape(14.dp)
-                        )
-                } else Modifier
-            )
-            .clip(RoundedCornerShape(14.dp))
-            .pointerInput(app.packageName, isSplitModeActive, isFirstSplitSelected) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    var isLongPress = false
-                    val timerJob = coroutineScope.launch {
-                        delay(1000L) // 1 second hold for split-screen selection
-                        isLongPress = true
-                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                        triggerBounce()
-                        onLongPress1s()
-                    }
-                    val upOrCancel = waitForUpOrCancellation()
-                    timerJob.cancel()
-                    if (upOrCancel != null && !isLongPress) {
-                        triggerBounce()
-                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                        onTap()
-                    }
-                }
+                scaleX = bounceScale
+                scaleY = bounceScale
             },
-        contentAlignment = Alignment.Center
-    ) {
-        if (app.iconBitmap != null) {
-            Image(
-                bitmap = app.iconBitmap.asImageBitmap(),
-                contentDescription = app.label,
-                modifier = Modifier.size(38.dp)
-            )
-        } else {
-            Icon(
-                imageVector = Icons.Default.Apps,
-                contentDescription = app.label,
-                modifier = Modifier.size(24.dp),
-                tint = Color.White.copy(alpha = 0.7f)
-            )
+        shape = RoundedCornerShape(14.dp),
+        color = Color.Transparent,
+        onClick = {
+            triggerBounce()
+            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            onTap()
         }
-
-        if (isFirstSplitSelected) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(16.dp)
-                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)),
-                contentAlignment = Alignment.Center
-            ) {
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            if (app.iconBitmap != null) {
+                Image(
+                    bitmap = app.iconBitmap.asImageBitmap(),
+                    contentDescription = app.label,
+                    modifier = Modifier.size(38.dp)
+                )
+            } else {
                 Icon(
-                    imageVector = Icons.Default.VerticalSplit,
-                    contentDescription = "Split 1",
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(11.dp)
+                    imageVector = Icons.Default.Apps,
+                    contentDescription = app.label,
+                    modifier = Modifier.size(24.dp),
+                    tint = Color.White.copy(alpha = 0.7f)
                 )
             }
         }
@@ -547,32 +681,58 @@ private fun toggleRingVibrateMode(context: Context, onModeChanged: (Int) -> Unit
 }
 
 /**
- * Launches App A and App B together in split-screen mode.
+ * Toggles or opens Wi-Fi settings/panel.
  */
-private fun launchSplitScreen(context: Context, appA: BarAppInfo, appB: BarAppInfo) {
-    val pm = context.packageManager
-    val intentA = pm.getLaunchIntentForPackage(appA.packageName)?.apply {
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    } ?: return
-
-    val intentB = pm.getLaunchIntentForPackage(appB.packageName)?.apply {
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
-    } ?: return
-
-    val accessibilityService = IslandAccessibilityService.instance
-    if (accessibilityService != null) {
-        runCatching { context.startActivity(intentA) }
-        CoroutineScope(Dispatchers.Main).launch {
-            delay(350L)
-            IslandAccessibilityService.toggleSplitScreen()
-            delay(400L)
-            runCatching { context.startActivity(intentB) }
+private fun toggleOrOpenWifi(context: Context) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        runCatching {
+            val panelIntent = Intent(Settings.Panel.ACTION_WIFI).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(panelIntent)
+            return
         }
-    } else {
-        runCatching { context.startActivity(intentA) }
-        CoroutineScope(Dispatchers.Main).launch {
-            delay(350L)
-            runCatching { context.startActivity(intentB) }
+    }
+    runCatching {
+        val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+        if (wm != null) {
+            @Suppress("DEPRECATION")
+            wm.isWifiEnabled = !wm.isWifiEnabled
+        }
+    }.onFailure {
+        runCatching {
+            val intent = Intent(Settings.ACTION_WIFI_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        }
+    }
+}
+
+/**
+ * Opens Mobile data / Internet settings panel.
+ */
+private fun openMobileDataPanel(context: Context) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        runCatching {
+            val panelIntent = Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(panelIntent)
+            return
+        }
+    }
+    runCatching {
+        val intent = Intent(Settings.ACTION_DATA_ROAMING_SETTINGS).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
+    }.onFailure {
+        runCatching {
+            val intent = Intent(Settings.ACTION_NETWORK_OPERATOR_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
         }
     }
 }

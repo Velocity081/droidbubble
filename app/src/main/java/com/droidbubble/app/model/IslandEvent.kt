@@ -85,7 +85,6 @@ enum class IslandPriority {
     FLASHLIGHT,
     CHARGING,
     ALARM,
-    HOTSPOT,
     FPS,
     WEATHER,
     NETWORK_SPEED,

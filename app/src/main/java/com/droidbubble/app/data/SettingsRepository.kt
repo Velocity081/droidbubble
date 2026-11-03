@@ -55,7 +55,6 @@ class SettingsRepository(private val context: Context) {
         val SHOW_FPS = booleanPreferencesKey("show_fps")
         val SHOW_WEATHER = booleanPreferencesKey("show_weather")
         val SHOW_NETWORK_SPEED = booleanPreferencesKey("show_network_speed")
-        val SHOW_HOTSPOT = booleanPreferencesKey("show_hotspot")
         val SHOW_ALARM = booleanPreferencesKey("show_alarm")
         val AUTO_DISMISS_NOTIFICATIONS = booleanPreferencesKey("auto_dismiss_notifications")
         val NOTIFICATION_AUTO_DISMISS_SECONDS = intPreferencesKey("notification_auto_dismiss_seconds")
@@ -84,6 +83,10 @@ class SettingsRepository(private val context: Context) {
         val DROIDBAR_ENABLED = booleanPreferencesKey("droidbar_enabled")
         val DROIDBAR_SHOW_FLASHLIGHT = booleanPreferencesKey("droidbar_show_flashlight")
         val DROIDBAR_SHOW_RING_MODE = booleanPreferencesKey("droidbar_show_ring_mode")
+        val DROIDBAR_SHOW_SCREENSHOT = booleanPreferencesKey("droidbar_show_screenshot")
+        val DROIDBAR_SHOW_WIFI = booleanPreferencesKey("droidbar_show_wifi")
+        val DROIDBAR_SHOW_MOBILE_DATA = booleanPreferencesKey("droidbar_show_mobile_data")
+        val DROIDBAR_SHOW_SCREEN_RECORD = booleanPreferencesKey("droidbar_show_screen_record")
     }
 
     val settingsFlow: Flow<IslandSettings> = context.dataStore.data.map { preferences ->
@@ -130,7 +133,6 @@ class SettingsRepository(private val context: Context) {
             showFps = preferences[PreferencesKeys.SHOW_FPS] ?: false,
             showWeather = preferences[PreferencesKeys.SHOW_WEATHER] ?: false,
             showNetworkSpeed = preferences[PreferencesKeys.SHOW_NETWORK_SPEED] ?: false,
-            showHotspot = preferences[PreferencesKeys.SHOW_HOTSPOT] ?: true,
             showAlarm = preferences[PreferencesKeys.SHOW_ALARM] ?: true,
             autoDismissNotifications = preferences[PreferencesKeys.AUTO_DISMISS_NOTIFICATIONS] ?: false,
             notificationAutoDismissSeconds = preferences[PreferencesKeys.NOTIFICATION_AUTO_DISMISS_SECONDS] ?: 3,
@@ -174,7 +176,11 @@ class SettingsRepository(private val context: Context) {
                 } ?: DEFAULT_MEDIA_LAYERS,
             droidbarEnabled = preferences[PreferencesKeys.DROIDBAR_ENABLED] ?: false,
             droidbarShowFlashlight = preferences[PreferencesKeys.DROIDBAR_SHOW_FLASHLIGHT] ?: true,
-            droidbarShowRingMode = preferences[PreferencesKeys.DROIDBAR_SHOW_RING_MODE] ?: true
+            droidbarShowRingMode = preferences[PreferencesKeys.DROIDBAR_SHOW_RING_MODE] ?: true,
+            droidbarShowScreenshot = preferences[PreferencesKeys.DROIDBAR_SHOW_SCREENSHOT] ?: true,
+            droidbarShowWifi = preferences[PreferencesKeys.DROIDBAR_SHOW_WIFI] ?: true,
+            droidbarShowMobileData = preferences[PreferencesKeys.DROIDBAR_SHOW_MOBILE_DATA] ?: true,
+            droidbarShowScreenRecord = preferences[PreferencesKeys.DROIDBAR_SHOW_SCREEN_RECORD] ?: true
         )
     }
 
@@ -223,8 +229,7 @@ class SettingsRepository(private val context: Context) {
                 showFps = preferences[PreferencesKeys.SHOW_FPS] ?: false,
                 showWeather = preferences[PreferencesKeys.SHOW_WEATHER] ?: false,
                 showNetworkSpeed = preferences[PreferencesKeys.SHOW_NETWORK_SPEED] ?: false,
-                showHotspot = preferences[PreferencesKeys.SHOW_HOTSPOT] ?: true,
-                showAlarm = preferences[PreferencesKeys.SHOW_ALARM] ?: true,
+                    showAlarm = preferences[PreferencesKeys.SHOW_ALARM] ?: true,
                 autoDismissNotifications = preferences[PreferencesKeys.AUTO_DISMISS_NOTIFICATIONS] ?: false,
                 notificationAutoDismissSeconds = preferences[PreferencesKeys.NOTIFICATION_AUTO_DISMISS_SECONDS] ?: 3,
                 persistentCharging = preferences[PreferencesKeys.PERSISTENT_CHARGING] ?: false,
@@ -267,7 +272,11 @@ class SettingsRepository(private val context: Context) {
                     } ?: DEFAULT_MEDIA_LAYERS,
                 droidbarEnabled = preferences[PreferencesKeys.DROIDBAR_ENABLED] ?: false,
             droidbarShowFlashlight = preferences[PreferencesKeys.DROIDBAR_SHOW_FLASHLIGHT] ?: true,
-            droidbarShowRingMode = preferences[PreferencesKeys.DROIDBAR_SHOW_RING_MODE] ?: true
+            droidbarShowRingMode = preferences[PreferencesKeys.DROIDBAR_SHOW_RING_MODE] ?: true,
+            droidbarShowScreenshot = preferences[PreferencesKeys.DROIDBAR_SHOW_SCREENSHOT] ?: true,
+            droidbarShowWifi = preferences[PreferencesKeys.DROIDBAR_SHOW_WIFI] ?: true,
+            droidbarShowMobileData = preferences[PreferencesKeys.DROIDBAR_SHOW_MOBILE_DATA] ?: true,
+            droidbarShowScreenRecord = preferences[PreferencesKeys.DROIDBAR_SHOW_SCREEN_RECORD] ?: true
             )
 
             val newSettings = update(current)
@@ -307,7 +316,6 @@ class SettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.SHOW_FPS] = newSettings.showFps
             preferences[PreferencesKeys.SHOW_WEATHER] = newSettings.showWeather
             preferences[PreferencesKeys.SHOW_NETWORK_SPEED] = newSettings.showNetworkSpeed
-            preferences[PreferencesKeys.SHOW_HOTSPOT] = newSettings.showHotspot
             preferences[PreferencesKeys.SHOW_ALARM] = newSettings.showAlarm
             preferences[PreferencesKeys.AUTO_DISMISS_NOTIFICATIONS] = newSettings.autoDismissNotifications
             preferences[PreferencesKeys.NOTIFICATION_AUTO_DISMISS_SECONDS] = newSettings.notificationAutoDismissSeconds
@@ -336,6 +344,10 @@ class SettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.DROIDBAR_ENABLED] = newSettings.droidbarEnabled
             preferences[PreferencesKeys.DROIDBAR_SHOW_FLASHLIGHT] = newSettings.droidbarShowFlashlight
             preferences[PreferencesKeys.DROIDBAR_SHOW_RING_MODE] = newSettings.droidbarShowRingMode
+            preferences[PreferencesKeys.DROIDBAR_SHOW_SCREENSHOT] = newSettings.droidbarShowScreenshot
+            preferences[PreferencesKeys.DROIDBAR_SHOW_WIFI] = newSettings.droidbarShowWifi
+            preferences[PreferencesKeys.DROIDBAR_SHOW_MOBILE_DATA] = newSettings.droidbarShowMobileData
+            preferences[PreferencesKeys.DROIDBAR_SHOW_SCREEN_RECORD] = newSettings.droidbarShowScreenRecord
         }
     }
 }

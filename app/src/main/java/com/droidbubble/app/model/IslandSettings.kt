@@ -9,7 +9,6 @@ val DEFAULT_FEATURE_PRIORITIES = listOf(
     "FLASHLIGHT",
     "PERSISTENT_CHARGING",
     "ALARM",
-    "HOTSPOT",
     "FPS",
     "WEATHER",
     "NETWORK_SPEED"
@@ -62,7 +61,6 @@ data class IslandSettings(
     val showFps: Boolean = false,
     val showWeather: Boolean = false,
     val showNetworkSpeed: Boolean = false,
-    val showHotspot: Boolean = true,
     val showAlarm: Boolean = true,
     val autoDismissNotifications: Boolean = false,
     val notificationAutoDismissSeconds: Int = 3,
@@ -90,7 +88,11 @@ data class IslandSettings(
     val mediaLayersOrder: List<String> = DEFAULT_MEDIA_LAYERS,
     val droidbarEnabled: Boolean = false,
     val droidbarShowFlashlight: Boolean = true,
-    val droidbarShowRingMode: Boolean = true
+    val droidbarShowRingMode: Boolean = true,
+    val droidbarShowScreenshot: Boolean = true,
+    val droidbarShowWifi: Boolean = true,
+    val droidbarShowMobileData: Boolean = true,
+    val droidbarShowScreenRecord: Boolean = true
 ) {
     val isGlass: Boolean get() = designLanguage == DesignLanguage.GLASS || glassEnabled
     val isMaterial3: Boolean get() = designLanguage == DesignLanguage.MATERIAL3

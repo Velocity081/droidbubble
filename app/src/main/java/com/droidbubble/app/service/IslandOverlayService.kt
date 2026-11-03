@@ -724,7 +724,6 @@ class IslandOverlayService : Service() {
                                 liveSettings.showFps ||
                                 liveSettings.showWeather ||
                                 liveSettings.showNetworkSpeed ||
-                                (liveSettings.showHotspot && IslandStateManager.isHotspotActive) ||
                                 (liveSettings.showAlarm && IslandStateManager.isAlarmActive)
                             touchManager?.updateCompactBounds(
                                 rects = rects,
@@ -769,7 +768,10 @@ class IslandOverlayService : Service() {
                     IslandStateManager.activeRingerMode,
                     IslandStateManager.isFlashlightOn
                 ) { _, _, _, _, _ -> Unit },
-                IslandStateManager.isDeviceLocked
+                kotlinx.coroutines.flow.combine(
+                    IslandStateManager.isDeviceLocked,
+                    IslandStateManager.alarmInfo
+                ) { _, _ -> Unit }
             ) { expanded, _, _, _ -> expanded }.collectLatest { expanded ->
                 updateWindowState(expanded)
             }
@@ -902,7 +904,6 @@ class IslandOverlayService : Service() {
             val isRingerMode = currentSettings.showRingerMode && IslandStateManager.isRingerModeActive
             val isAirplaneMode = currentSettings.showAirplaneMode && IslandStateManager.isAirplaneModeActive
             val isFlashlight = currentSettings.showFlashlight && IslandStateManager.isFlashlightActive
-            val isHotspot = currentSettings.showHotspot && IslandStateManager.isHotspotActive
             val isAlarm = currentSettings.showAlarm && IslandStateManager.isAlarmActive
             val isOccupied = (currentSettings.showCalls && IslandStateManager.isCallActive) ||
                     (currentSettings.showMedia && IslandStateManager.isMediaActive) ||
@@ -915,9 +916,8 @@ class IslandOverlayService : Service() {
                     isBluetooth ||
                     isRingerMode ||
                     isAirplaneMode ||
-                    isHotspot ||
                     isAlarm
-            val hasPersistentWidgets = currentSettings.showFps || currentSettings.showWeather || currentSettings.showNetworkSpeed || isHotspot || isAlarm
+            val hasPersistentWidgets = currentSettings.showFps || currentSettings.showWeather || currentSettings.showNetworkSpeed || isAlarm
             val shouldShowCompact = isOccupied || currentSettings.alwaysShowPill || hasPersistentWidgets
 
             // Use a unified compact window width across all compact states (single, dual, charging, unlock, ringer)

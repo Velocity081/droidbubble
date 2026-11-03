@@ -4,6 +4,8 @@ import com.droidbubble.app.island.M3CookieShape
 import com.droidbubble.app.island.M3Cookie6Shape
 import androidx.compose.material.icons.filled.WifiTethering
 import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.Screenshot
+import androidx.compose.material.icons.filled.SignalCellularAlt
 
 
 import android.content.ClipData
@@ -955,7 +957,6 @@ fun MainScreen(
                                 "FLASHLIGHT" -> settings.showFlashlight
                                 "PERSISTENT_CHARGING" -> settings.persistentCharging
                                 "ALARM" -> settings.showAlarm
-                                "HOTSPOT" -> settings.showHotspot
                                 "FPS" -> settings.showFps
                                 "WEATHER" -> settings.showWeather
                                 "NETWORK_SPEED" -> settings.showNetworkSpeed
@@ -971,7 +972,6 @@ fun MainScreen(
                                 "FLASHLIGHT" -> "Flashlight Indicator"
                                 "PERSISTENT_CHARGING" -> "Persistent Charging"
                                 "ALARM" -> "Upcoming Alarms"
-                                "HOTSPOT" -> "Hotspot Devices"
                                 "FPS" -> "FPS Counter"
                                 "WEATHER" -> "Weather & Temperature"
                                 "NETWORK_SPEED" -> "Wi-Fi & Network Speed"
@@ -987,7 +987,6 @@ fun MainScreen(
                                 "FLASHLIGHT" -> Icons.Default.FlashlightOn
                                 "PERSISTENT_CHARGING" -> Icons.Default.Bolt
                                 "ALARM" -> Icons.Default.Alarm
-                                "HOTSPOT" -> Icons.Default.WifiTethering
                                 "FPS" -> Icons.Default.Speed
                                 "WEATHER" -> Icons.Default.WbSunny
                                 "NETWORK_SPEED" -> Icons.Default.Wifi
@@ -1105,7 +1104,6 @@ fun MainScreen(
                                                         "NETWORK_SPEED" -> s.copy(showNetworkSpeed = checked)
                                                         "PERSISTENT_CHARGING" -> s.copy(persistentCharging = checked)
                                                         "ALARM" -> s.copy(showAlarm = checked)
-                                                        "HOTSPOT" -> s.copy(showHotspot = checked)
                                                         else -> s
                                                     }
                                                 }
@@ -3574,13 +3572,6 @@ fun DroidbarPage(
                     ListItem(
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         headlineContent = { Text("Enable Droidbar", fontWeight = FontWeight.SemiBold) },
-                        supportingContent = {
-                            Text(
-                                "Minimalist edge bar on the right side for fast access to your top apps",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
                         leadingContent = {
                             Surface(
                                 modifier = Modifier.size(38.dp),
@@ -3684,7 +3675,7 @@ fun DroidbarPage(
                         )
                     }
 
-                    SettingsCardItem(position = GroupPosition.BOTTOM) {
+                    SettingsCardItem(position = GroupPosition.MIDDLE) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             headlineContent = { Text("Ring mode", fontWeight = FontWeight.SemiBold) },
@@ -3710,6 +3701,134 @@ fun DroidbarPage(
                                     checked = settings.droidbarShowRingMode,
                                     onCheckedChange = { checked ->
                                         onUpdateSettings { it.copy(droidbarShowRingMode = checked) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.MIDDLE) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Screenshot", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Surface(
+                                    modifier = Modifier.size(38.dp),
+                                    shape = M3Cookie6Shape,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                ) {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Default.Screenshot,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.droidbarShowScreenshot,
+                                    onCheckedChange = { checked ->
+                                        onUpdateSettings { it.copy(droidbarShowScreenshot = checked) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.MIDDLE) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Wi-Fi", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Surface(
+                                    modifier = Modifier.size(38.dp),
+                                    shape = M3Cookie6Shape,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                ) {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Default.Wifi,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.droidbarShowWifi,
+                                    onCheckedChange = { checked ->
+                                        onUpdateSettings { it.copy(droidbarShowWifi = checked) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.MIDDLE) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Mobile data", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Surface(
+                                    modifier = Modifier.size(38.dp),
+                                    shape = M3Cookie6Shape,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                ) {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Default.SignalCellularAlt,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.droidbarShowMobileData,
+                                    onCheckedChange = { checked ->
+                                        onUpdateSettings { it.copy(droidbarShowMobileData = checked) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.BOTTOM) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Screen record", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Surface(
+                                    modifier = Modifier.size(38.dp),
+                                    shape = M3Cookie6Shape,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                ) {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Default.Videocam,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.droidbarShowScreenRecord,
+                                    onCheckedChange = { checked ->
+                                        onUpdateSettings { it.copy(droidbarShowScreenRecord = checked) }
                                     }
                                 )
                             }

@@ -545,16 +545,14 @@ fun IslandOverlayRoot(
     val isRingerMode = allowInOrientation && settings.showRingerMode && activeRingerMode != null && !isCharging && !isUnlock && !isBluetooth
     val isAirplaneMode = allowInOrientation && settings.showAirplaneMode && activeAirplaneMode != null && !isCharging && !isUnlock && !isBluetooth && !isRingerMode
 
-    val hotspotInfo by IslandStateManager.hotspotInfo.collectAsState()
     val alarmInfo by IslandStateManager.alarmInfo.collectAsState()
 
-    val isHotspot = allowInOrientation && settings.showHotspot && IslandStateManager.isHotspotActive
     val isAlarm = allowInOrientation && settings.showAlarm && IslandStateManager.isAlarmActive
 
     val isFps = allowInOrientation && settings.showFps
     val isWeather = allowInOrientation && settings.showWeather
     val isNetworkSpeed = allowInOrientation && settings.showNetworkSpeed
-    val hasPersistent = isFps || isWeather || isNetworkSpeed || isHotspot || isAlarm
+    val hasPersistent = isFps || isWeather || isNetworkSpeed || isAlarm
 
     val isOccupied = allowInOrientation && (isCall || isRecording || isNotification || isMedia || isProgress || isCharging || isPersistentCharging || isUnlock || isBluetooth || isFlashlight || isRingerMode || isAirplaneMode || hasPersistent)
 
@@ -570,7 +568,6 @@ fun IslandOverlayRoot(
                 "FLASHLIGHT" -> if (isFlashlight) add(IslandPriority.FLASHLIGHT)
                 "PERSISTENT_CHARGING" -> if (isPersistentCharging) add(IslandPriority.CHARGING)
                 "ALARM" -> if (isAlarm) add(IslandPriority.ALARM)
-                "HOTSPOT" -> if (isHotspot) add(IslandPriority.HOTSPOT)
                 "FPS" -> if (isFps) add(IslandPriority.FPS)
                 "WEATHER" -> if (isWeather) add(IslandPriority.WEATHER)
                 "NETWORK_SPEED" -> if (isNetworkSpeed) add(IslandPriority.NETWORK_SPEED)
@@ -584,7 +581,6 @@ fun IslandOverlayRoot(
         if (isFlashlight && IslandPriority.FLASHLIGHT !in this) add(IslandPriority.FLASHLIGHT)
         if (isPersistentCharging && IslandPriority.CHARGING !in this) add(IslandPriority.CHARGING)
         if (isAlarm && IslandPriority.ALARM !in this) add(IslandPriority.ALARM)
-        if (isHotspot && IslandPriority.HOTSPOT !in this) add(IslandPriority.HOTSPOT)
         if (isFps && IslandPriority.FPS !in this) add(IslandPriority.FPS)
         if (isWeather && IslandPriority.WEATHER !in this) add(IslandPriority.WEATHER)
         if (isNetworkSpeed && IslandPriority.NETWORK_SPEED !in this) add(IslandPriority.NETWORK_SPEED)
@@ -1039,7 +1035,7 @@ fun IslandOverlayRoot(
         IslandPriority.CHARGING -> 112.dp
         IslandPriority.CALL, IslandPriority.SCREEN_RECORDING -> 104.dp
         IslandPriority.WEATHER -> 98.dp
-        IslandPriority.HOTSPOT, IslandPriority.ALARM -> 98.dp
+        IslandPriority.ALARM -> 98.dp
         else -> 96.dp
     }
     val minDualLeft = when (compactPrimaryPriority) {
@@ -1048,7 +1044,7 @@ fun IslandOverlayRoot(
         IslandPriority.CHARGING -> 138.dp
         IslandPriority.CALL, IslandPriority.SCREEN_RECORDING -> 138.dp
         IslandPriority.WEATHER -> 134.dp
-        IslandPriority.HOTSPOT, IslandPriority.ALARM -> 136.dp
+        IslandPriority.ALARM -> 136.dp
         else -> 132.dp
     }
 
@@ -1103,7 +1099,7 @@ fun IslandOverlayRoot(
     }
 
     val targetCard1Height = when {
-        isExpanded && (primaryPriority == IslandPriority.SCREEN_RECORDING || primaryPriority == IslandPriority.CALL || primaryPriority == IslandPriority.FPS || primaryPriority == IslandPriority.WEATHER || primaryPriority == IslandPriority.NETWORK_SPEED || primaryPriority == IslandPriority.CHARGING) -> (78.dp * settings.expandedScale).coerceAtLeast(68.dp)
+        isExpanded && (primaryPriority == IslandPriority.SCREEN_RECORDING || primaryPriority == IslandPriority.CALL || primaryPriority == IslandPriority.FPS || primaryPriority == IslandPriority.WEATHER || primaryPriority == IslandPriority.NETWORK_SPEED || primaryPriority == IslandPriority.CHARGING || primaryPriority == IslandPriority.ALARM) -> (78.dp * settings.expandedScale).coerceAtLeast(68.dp)
         isExpanded && primaryPriority == IslandPriority.PROGRESS -> (84.dp * settings.expandedScale).coerceAtLeast(74.dp)
         isExpanded && primaryPriority == IslandPriority.POP_NOTIFICATION -> (notifBaseHeight * settings.expandedScale).coerceAtLeast(136.dp)
         isExpanded && primaryPriority == IslandPriority.FLASHLIGHT -> if (settings.designLanguage == DesignLanguage.MATERIAL3) (74.dp * settings.expandedScale).coerceAtLeast(60.dp) else (205.dp * settings.expandedScale).coerceAtLeast(165.dp)
@@ -1138,7 +1134,8 @@ fun IslandOverlayRoot(
             IslandPriority.FPS,
             IslandPriority.WEATHER,
             IslandPriority.NETWORK_SPEED,
-            IslandPriority.CHARGING -> 78.dp
+            IslandPriority.CHARGING,
+            IslandPriority.ALARM -> 78.dp
             IslandPriority.PROGRESS -> 84.dp
             IslandPriority.POP_NOTIFICATION -> notifBaseHeight
             IslandPriority.FLASHLIGHT -> if (settings.designLanguage == DesignLanguage.MATERIAL3) 74.dp else 205.dp
@@ -1150,7 +1147,8 @@ fun IslandOverlayRoot(
             IslandPriority.FPS,
             IslandPriority.WEATHER,
             IslandPriority.NETWORK_SPEED,
-            IslandPriority.CHARGING -> 68.dp
+            IslandPriority.CHARGING,
+            IslandPriority.ALARM -> 68.dp
             IslandPriority.PROGRESS -> 74.dp
             IslandPriority.POP_NOTIFICATION -> 136.dp
             IslandPriority.FLASHLIGHT -> if (settings.designLanguage == DesignLanguage.MATERIAL3) 74.dp else 165.dp
@@ -1710,7 +1708,6 @@ fun IslandOverlayRoot(
                                         fpsInfo = fpsInfo,
                                         weatherInfo = weatherInfo,
                                         networkSpeedInfo = networkSpeedInfo,
-                                        hotspotInfo = hotspotInfo,
                                         alarmInfo = alarmInfo,
                                         scale = settings.expandedScale,
                                         spinningAlbumArt = settings.spinningAlbumArt,
@@ -1988,7 +1985,6 @@ fun IslandOverlayRoot(
                                         fpsInfo = fpsInfo,
                                         weatherInfo = weatherInfo,
                                         networkSpeedInfo = networkSpeedInfo,
-                                        hotspotInfo = hotspotInfo,
                                         alarmInfo = alarmInfo,
                                         scale = settings.expandedScale,
                                         spinningAlbumArt = settings.spinningAlbumArt,
@@ -2264,7 +2260,6 @@ fun IslandOverlayRoot(
                                         fpsInfo = fpsInfo,
                                         weatherInfo = weatherInfo,
                                         networkSpeedInfo = networkSpeedInfo,
-                                        hotspotInfo = hotspotInfo,
                                         alarmInfo = alarmInfo,
                                         scale = settings.expandedScale,
                                         spinningAlbumArt = settings.spinningAlbumArt,
@@ -2434,7 +2429,6 @@ fun IslandOverlayRoot(
                                     fpsInfo = fpsInfo,
                                     weatherInfo = weatherInfo,
                                     networkSpeedInfo = networkSpeedInfo,
-                                    hotspotInfo = hotspotInfo,
                                     alarmInfo = alarmInfo,
                                     spinningAlbumArt = settings.spinningAlbumArt,
                                     charging = charging,
@@ -2874,7 +2868,6 @@ fun IslandOverlayRoot(
                                 networkSpeedInfo = networkSpeedInfo,
                                 secondaryPriority = compactSecondaryPriority,
                                 charging = charging,
-                                hotspotInfo = hotspotInfo,
                                 alarmInfo = alarmInfo,
                                 designLanguage = settings.designLanguage
                             )
@@ -3261,7 +3254,6 @@ fun AuxiliaryBubbleContent(
     fpsInfo: FpsInfo = FpsInfo(),
     weatherInfo: WeatherInfo = WeatherInfo(),
     networkSpeedInfo: NetworkSpeedInfo = NetworkSpeedInfo(),
-    hotspotInfo: IslandStateManager.HotspotInfo = IslandStateManager.HotspotInfo(),
     alarmInfo: IslandStateManager.AlarmInfo? = null,
     spinningAlbumArt: Boolean = false,
     charging: IslandStateManager.ChargingInfo? = null,
@@ -3414,27 +3406,6 @@ fun AuxiliaryBubbleContent(
                 )
             }
         }
-        IslandPriority.HOTSPOT -> {
-            Row(
-                modifier = Modifier.fillMaxHeight(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(3.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.WifiTethering,
-                    contentDescription = "Hotspot",
-                    tint = if (isM3) m3Primary else Color(0xFFFF9F0A),
-                    modifier = Modifier.size(15.dp)
-                )
-                val count = hotspotInfo.connectedDeviceCount
-                Text(
-                    text = "$count",
-                    color = if (isM3) m3Primary else Color.White,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
         IslandPriority.ALARM -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Icon(
@@ -3479,7 +3450,6 @@ fun CompactContent(
     networkSpeedInfo: NetworkSpeedInfo = NetworkSpeedInfo(),
     secondaryPriority: IslandPriority? = null,
     charging: IslandStateManager.ChargingInfo? = null,
-    hotspotInfo: IslandStateManager.HotspotInfo = IslandStateManager.HotspotInfo(),
     alarmInfo: IslandStateManager.AlarmInfo? = null,
     designLanguage: DesignLanguage = DesignLanguage.DROIDBUBBLE
 ) {
@@ -3650,27 +3620,6 @@ fun CompactContent(
                 )
             }
 
-            IslandPriority.HOTSPOT -> {
-                Row(
-                    modifier = Modifier.fillMaxHeight(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(3.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.WifiTethering,
-                        contentDescription = "Hotspot",
-                        tint = if (isM3) m3Primary else Color(0xFFFF9F0A),
-                        modifier = Modifier.size(15.dp)
-                    )
-                    val count = hotspotInfo.connectedDeviceCount
-                    Text(
-                        text = "$count",
-                        color = if (isM3) m3Primary else Color.White,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
 
             IslandPriority.ALARM -> {
                 Icon(
@@ -3793,17 +3742,6 @@ fun CompactContent(
                 )
             }
 
-            IslandPriority.HOTSPOT -> {
-                val count = hotspotInfo.connectedDeviceCount
-                Text(
-                    text = if (count == 1) "1 dev" else "$count devs",
-                    color = if (isM3) m3Primary else Color.White,
-                    fontSize = if (isCompactDual) 10.5.sp else 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    softWrap = false
-                )
-            }
 
             IslandPriority.ALARM -> {
                 Text(
@@ -3885,7 +3823,7 @@ fun CompactContent(
             IslandPriority.FPS -> 0.85f
             IslandPriority.CALL, IslandPriority.SCREEN_RECORDING -> 0.85f
             IslandPriority.WEATHER -> 0.90f
-            IslandPriority.HOTSPOT, IslandPriority.ALARM -> 0.85f
+            IslandPriority.ALARM -> 0.85f
             else -> 1f
         }
         val rightWeight = when (priority) {
@@ -3893,7 +3831,7 @@ fun CompactContent(
             IslandPriority.FPS -> 1.15f
             IslandPriority.CALL, IslandPriority.SCREEN_RECORDING -> 1.15f
             IslandPriority.WEATHER -> 1.10f
-            IslandPriority.HOTSPOT, IslandPriority.ALARM -> 1.15f
+            IslandPriority.ALARM -> 1.15f
             else -> 1f
         }
         val startPadding = (when {
@@ -3952,7 +3890,6 @@ fun ExpandedCardContent(
     fpsInfo: FpsInfo = FpsInfo(),
     weatherInfo: WeatherInfo = WeatherInfo(),
     networkSpeedInfo: NetworkSpeedInfo = NetworkSpeedInfo(),
-    hotspotInfo: IslandStateManager.HotspotInfo = IslandStateManager.HotspotInfo(),
     alarmInfo: IslandStateManager.AlarmInfo? = null,
     scale: Float = 1.0f,
     spinningAlbumArt: Boolean = false,
@@ -4013,9 +3950,6 @@ fun ExpandedCardContent(
         }
         IslandPriority.NETWORK_SPEED -> {
             ExpandedNetworkSpeedView(networkSpeedInfo = networkSpeedInfo, onCollapse = onCollapse, scale = scale, designLanguage = designLanguage)
-        }
-        IslandPriority.HOTSPOT -> {
-            ExpandedHotspotView(hotspotInfo = hotspotInfo, onCollapse = onCollapse, scale = scale, designLanguage = designLanguage)
         }
         IslandPriority.ALARM -> {
             ExpandedAlarmView(alarmInfo = alarmInfo, onCollapse = onCollapse, scale = scale, designLanguage = designLanguage)
@@ -6857,106 +6791,6 @@ private fun GlassBottomHighlight(
     }
 }
 
-
-@Composable
-fun ExpandedHotspotView(
-    hotspotInfo: IslandStateManager.HotspotInfo,
-    onCollapse: () -> Unit,
-    scale: Float = 1.0f,
-    designLanguage: DesignLanguage = DesignLanguage.DROIDBUBBLE
-) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val iconSize = (30.dp * scale).coerceIn(24.dp, 36.dp)
-    val iconGap = (12.dp * scale).coerceIn(8.dp, 16.dp)
-    val titleSize = (18f * scale).coerceIn(16f, 22f).sp
-    val subtitleSize = (13f * scale).coerceIn(11.5f, 15f).sp
-    val circleButtonSize = (44.dp * scale).coerceIn(38.dp, 52.dp)
-    val actionIconSize = (20.dp * scale).coerceIn(18.dp, 24.dp)
-
-    val count = hotspotInfo.connectedDeviceCount
-    val countText = if (count == 1) "1 device connected" else "$count devices connected"
-
-    val isM3 = designLanguage == DesignLanguage.MATERIAL3
-    val iconColor = if (isM3) MaterialTheme.colorScheme.primary else Color(0xFFFF9F0A)
-    val textColor = if (isM3) MaterialTheme.colorScheme.onSurface else Color.White
-    val subColor = if (isM3) MaterialTheme.colorScheme.onSurfaceVariant else Color(0xFFA1A1AA)
-
-    Row(
-        modifier = Modifier.fillMaxSize(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(
-            modifier = Modifier
-                .weight(1f)
-                .padding(end = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.WifiTethering,
-                contentDescription = "Hotspot",
-                tint = iconColor,
-                modifier = Modifier.size(iconSize)
-            )
-
-            Spacer(modifier = Modifier.width(iconGap))
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = "Personal Hotspot",
-                    color = textColor,
-                    fontSize = titleSize,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.3.sp,
-                    maxLines = 1
-                )
-
-                Text(
-                    text = countText,
-                    color = subColor,
-                    fontSize = subtitleSize,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-
-        BouncyFilledTonalButton(
-            onClick = {
-                runCatching {
-                    val intent = android.content.Intent("android.settings.TETHER_SETTINGS").apply {
-                        flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    context.startActivity(intent)
-                }.onFailure {
-                    runCatching {
-                        val intent = android.content.Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS).apply {
-                            flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
-                        }
-                        context.startActivity(intent)
-                    }
-                }
-            },
-            modifier = Modifier.size(circleButtonSize),
-            shape = if (isM3) M3CookieShape else CircleShape,
-            contentPadding = PaddingValues(0.dp),
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = if (isM3) MaterialTheme.colorScheme.surfaceContainerHighest else Color(0xFF2C2C2E),
-                contentColor = if (isM3) MaterialTheme.colorScheme.onSurface else Color(0xFFF4F4F5)
-            )
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                contentDescription = "Hotspot Settings",
-                modifier = Modifier.size(actionIconSize)
-            )
-        }
-    }
-}
 
 @Composable
 fun ExpandedAlarmView(

@@ -45,28 +45,9 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
     private var prevTxBytes = -1L
     private var totalSessionBytes = 0L
 
-    // Hotspot & Alarm
-    private var hotspotPollingJob: Job? = null
+    // Alarm
     private var alarmRefreshJob: Job? = null
-    private var isHotspotMonitoring = false
     private var isAlarmMonitoring = false
-
-    private val hotspotReceiver = object : android.content.BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: android.content.Intent?) {
-            val state = intent?.getIntExtra("wifi_state", -1) ?: -1
-            if (state == 13) {
-                if (hotspotPollingJob == null || !hotspotPollingJob!!.isActive) {
-                    startHotspotPolling()
-                }
-            } else if (state == 11 || state == 10) {
-                hotspotPollingJob?.cancel()
-                hotspotPollingJob = null
-                IslandStateManager.updateHotspot(IslandStateManager.HotspotInfo(isEnabled = false, connectedDeviceCount = 0))
-            } else {
-                checkHotspotState()
-            }
-        }
-    }
 
     private val alarmReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: android.content.Intent?) {
@@ -183,11 +164,7 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
             weatherJob = null
         }
 
-        if (settings.showHotspot) {
-            startHotspotMonitoring()
-        } else {
-            stopHotspotMonitoring()
-        }
+
 
         if (settings.showAlarm) {
             startAlarmMonitoring()
@@ -198,7 +175,6 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
 
     fun stop() {
         stopFpsMonitoring()
-        stopHotspotMonitoring()
         stopAlarmMonitoring()
         networkJob?.cancel()
         weatherJob?.cancel()
@@ -462,137 +438,6 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
             lower.contains("asia") -> Triple(35.67, 139.65, "Tokyo")
             else -> Triple(37.98, 23.72, "Local Weather")
         }
-    }
-
-    private fun startHotspotMonitoring() {
-        if (isHotspotMonitoring) return
-        isHotspotMonitoring = true
-        runCatching {
-            val filter = android.content.IntentFilter("android.net.wifi.WIFI_AP_STATE_CHANGED").apply {
-                addAction("android.net.conn.TETHERING_CHANGED")
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                context.registerReceiver(hotspotReceiver, filter, Context.RECEIVER_EXPORTED)
-            } else {
-                context.registerReceiver(hotspotReceiver, filter)
-            }
-        }
-        checkHotspotState()
-    }
-
-    private fun stopHotspotMonitoring() {
-        if (!isHotspotMonitoring) return
-        isHotspotMonitoring = false
-        runCatching { context.unregisterReceiver(hotspotReceiver) }
-        hotspotPollingJob?.cancel()
-        hotspotPollingJob = null
-        IslandStateManager.updateHotspot(IslandStateManager.HotspotInfo(isEnabled = false, connectedDeviceCount = 0))
-    }
-
-    private fun checkHotspotState() {
-        val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
-        val isEnabled = runCatching {
-            val method = wm?.javaClass?.getMethod("getWifiApState")
-            method?.isAccessible = true
-            val state = method?.invoke(wm) as? Int ?: -1
-            state == 13 || state == 12
-        }.getOrElse {
-            runCatching {
-                val method = wm?.javaClass?.getMethod("isWifiApEnabled")
-                method?.isAccessible = true
-                method?.invoke(wm) as? Boolean ?: false
-            }.getOrElse {
-                runCatching {
-                    java.net.NetworkInterface.getNetworkInterfaces()?.toList()?.any { iface ->
-                        iface.isUp && iface.inetAddresses.toList().any { addr ->
-                            val ip = addr.hostAddress ?: ""
-                            ip.startsWith("192.168.43.") || ip.startsWith("192.168.50.") || ip.startsWith("192.168.49.")
-                        }
-                    } ?: false
-                }.getOrDefault(false)
-            }
-        }
-
-        if (isEnabled) {
-            if (hotspotPollingJob == null || !hotspotPollingJob!!.isActive) {
-                startHotspotPolling()
-            }
-        } else {
-            hotspotPollingJob?.cancel()
-            hotspotPollingJob = null
-            IslandStateManager.updateHotspot(IslandStateManager.HotspotInfo(isEnabled = false, connectedDeviceCount = 0))
-        }
-    }
-
-    private fun startHotspotPolling() {
-        hotspotPollingJob?.cancel()
-        hotspotPollingJob = scope.launch(Dispatchers.IO) {
-            withContext(Dispatchers.Main) {
-                IslandStateManager.updateHotspot(
-                    IslandStateManager.HotspotInfo(
-                        isEnabled = true,
-                        connectedDeviceCount = queryConnectedHotspotClients()
-                    )
-                )
-            }
-            while (isActive) {
-                val count = queryConnectedHotspotClients()
-                withContext(Dispatchers.Main) {
-                    IslandStateManager.updateHotspot(
-                        IslandStateManager.HotspotInfo(
-                            isEnabled = true,
-                            connectedDeviceCount = count
-                        )
-                    )
-                }
-                delay(2000L)
-            }
-        }
-    }
-
-    private fun queryConnectedHotspotClients(): Int {
-        val reachableMacs = mutableSetOf<String>()
-        runCatching {
-            val process = Runtime.getRuntime().exec("ip neigh")
-            val reader = BufferedReader(InputStreamReader(process.inputStream))
-            var line: String?
-            while (reader.readLine().also { line = it } != null) {
-                val l = line?.trim() ?: continue
-                if (!l.contains("FAILED") && !l.contains("INCOMPLETE") && l.contains("lladdr")) {
-                    val parts = l.split(Regex("\\s+"))
-                    val lladdrIdx = parts.indexOf("lladdr")
-                    if (lladdrIdx != -1 && lladdrIdx + 1 < parts.size) {
-                        val mac = parts[lladdrIdx + 1].lowercase()
-                        val ip = parts.firstOrNull() ?: ""
-                        if (ip.startsWith("192.168.43.") || ip.startsWith("192.168.49.") || ip.startsWith("192.168.50.") ||
-                            l.contains(" ap") || l.contains("softap") || l.contains("swlan")) {
-                            reachableMacs.add(mac)
-                        }
-                    }
-                }
-            }
-            process.waitFor()
-        }
-        if (reachableMacs.isEmpty()) {
-            runCatching {
-                val file = java.io.File("/proc/net/arp")
-                if (file.exists() && file.canRead()) {
-                    file.forEachLine { l ->
-                        if (!l.contains("IP address") && !l.contains("00:00:00:00:00:00")) {
-                            val parts = l.trim().split(Regex("\\s+"))
-                            if (parts.size >= 4) {
-                                val ip = parts[0]
-                                val mac = parts[3].lowercase()
-                                if (ip.startsWith("192.168.43.") || ip.startsWith("192.168.49.") || ip.startsWith("192.168.50.")) {
-                                    reachableMacs.add(mac)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return reachableMacs.size
     }
 
     private fun startAlarmMonitoring() {

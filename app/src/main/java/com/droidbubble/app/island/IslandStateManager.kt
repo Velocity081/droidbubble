@@ -118,19 +118,6 @@ object IslandStateManager {
         }
     }
 
-    data class HotspotInfo(
-        val isEnabled: Boolean = false,
-        val connectedDeviceCount: Int = 0
-    )
-
-    private val _hotspotInfo = MutableStateFlow(HotspotInfo())
-    val hotspotInfo: StateFlow<HotspotInfo> = _hotspotInfo.asStateFlow()
-
-    fun updateHotspot(info: HotspotInfo) {
-        if (_hotspotInfo.value != info) {
-            _hotspotInfo.value = info
-        }
-    }
 
     data class AlarmInfo(
         val triggerTimeMs: Long = 0L,
@@ -249,14 +236,12 @@ object IslandStateManager {
     val isRingerModeActive: Boolean
         get() = _activeRingerMode.value != null
 
-    val isHotspotActive: Boolean
-        get() = _hotspotInfo.value.isEnabled
 
     val isAlarmActive: Boolean
         get() = _alarmInfo.value != null
 
     val isOccupied: Boolean
-        get() = isCallActive || isRecordingActive || isNotificationActive || isMediaActive || isProgressActive || isChargingActive || isUnlockActive || isBluetoothActive || isFlashlightActive || isRingerModeActive || isAirplaneModeActive || isHotspotActive || isAlarmActive
+        get() = isCallActive || isRecordingActive || isNotificationActive || isMediaActive || isProgressActive || isChargingActive || isUnlockActive || isBluetoothActive || isFlashlightActive || isRingerModeActive || isAirplaneModeActive || isAlarmActive
 
     // Live priority determination: Call is top priority, then Media, Flashlight, Progress, Screen Recording, and Notification alerts last
     val currentPriority: IslandPriority
@@ -268,6 +253,7 @@ object IslandStateManager {
                 isProgressActive -> IslandPriority.PROGRESS
                 _screenRecordingState.value.isRecording -> IslandPriority.SCREEN_RECORDING
                 _activeNotification.value != null -> IslandPriority.POP_NOTIFICATION
+                isAlarmActive -> IslandPriority.ALARM
                 else -> IslandPriority.IDLE
             }
         }
