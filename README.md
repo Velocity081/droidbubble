@@ -1,41 +1,73 @@
 <p align="center">
-  <img src="assets/banner.jpg" alt="Droidbubble Banner" width="100%" />
+  <img src="assets/header.png" alt="Droidtools Preview" width="100%" />
 </p>
 
-<h1 align="center">Droidbubble</h1>
+# Droidtools
+
+Droidtools is a lightweight suite of system overlay utilities for Android, built natively in Kotlin with Jetpack Compose and Material 3.
+
+It packages two everyday utilities into one app:
+- **Droidbubble**: An adaptive dynamic island around your front camera cutout for media, notifications, and system events.
+- **Droidbar**: A slide-out edge bar on the right side of the screen for quick toggles and frequent apps.
+
+Free, open source, no ads, and no background tracking.
+
+---
 
 <p align="center">
-  <a href="https://github.com/Velocity081/droidbubble/releases/latest">
-    <img src="https://img.shields.io/github/v/release/Velocity081/droidbubble?style=for-the-badge&logo=github&label=Release" alt="Release" />
+  <a href="https://github.com/Velocity081/droidtools/releases">
+    <img src="https://img.shields.io/github/v/release/Velocity081/droidtools?include_prereleases&style=flat-square&label=Release" alt="Release" />
   </a>
-  <img src="https://img.shields.io/badge/Platform-Android%2013.0%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Platform" />
-  <a href="https://github.com/Velocity081/droidbubble/releases/latest/download/Droidbubble.apk">
-    <img src="https://img.shields.io/badge/Download-APK-2ea44f?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0xOSA5aC00VjNIOXY2SDVsNyA3IDctN3pNNSAxOHYyaDE0di0ySDV6Ii8%2BPC9zdmc%2B" alt="Download APK" />
+  <img src="https://img.shields.io/badge/Platform-Android%2013%2B-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Platform" />
+  <a href="https://github.com/Velocity081/droidtools/releases/latest/download/Droidtools.apk">
+    <img src="https://img.shields.io/badge/Download-APK-2ea44f?style=flat-square" alt="Download APK" />
   </a>
-  <a href="https://github.com/Velocity081/droidbubble/releases">
-    <img src="https://img.shields.io/github/downloads/Velocity081/droidbubble/total?style=for-the-badge" alt="Total Downloads" />
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="License" />
   </a>
 </p>
 
-Droidbubble brings a fluid, interactive Dynamic Island to Android. Built natively with Kotlin and Jetpack Compose, it wraps smoothly around your front camera cutout, adapting to whatever you're doing in real time while staying out of the way of your touches.
+---
 
-Free and open source. No ads, no telemetry, and no locked features.
+## Utilities
 
-## Features
+### Droidbubble
+- **Now Playing**: Album artwork, track title, seek bar, playback controls, and adaptive background blur.
+- **System Events**: Battery charging wattage, ringer profile changes, and active status indicators.
+- **Notifications**: Heads-up alerts with expandable previews and inline quick replies.
+- **Idle Tuck**: Sits flush inside your front camera cutout when nothing is active.
+- **Customization**: Position offsets, dimensions, spring tension, font picker, and layout layer reordering.
 
-- **Media Player**: Live album art, animated equalizer, seekable scrub bar, and adaptive color tints from the playing track.
-- **Dual Bubble Split**: Gracefully splits into two bubbles when multitasking (like music playing alongside screen recording or active downloads).
-- **Screen Recording**: Auto-detects active recordings with a pulsing indicator, live timer, and one-tap controls.
-- **Notifications & Quick Reply**: Clean pop-in banners with message previews and inline replies.
-- **Battery & Charging**: Live wattage readout, battery level, and ambient glow indicators.
-- **System Alerts & Widgets**: Real-time network monitor, weather, FPS meter, ring mode, and airplane mode indicators.
-- **Full Customization**: Fine-tune dimensions, camera cutout offsets, spring animations, custom fonts, and an experimental glass look.
-- **Zero-Footprint Idle**: Completely tucks into the camera cutout when idle, keeping your screen spotless.
+### Droidbar
+- **Edge Access**: Tap a subtle bar on the right edge to expand or collapse.
+- **Quick Controls**: 12-sided action buttons for Flashlight, Ring/Vibrate toggle, Wi-Fi, Mobile Data, and Screenshot.
+- **App Launcher**: Quick switch between your most used apps or a custom pinned set.
+- **Design**: Opaque dark surface with subtle spring physics and haptics.
+
+---
 
 ## Requirements
 
-- Android 13+
+- Android 13 or newer
+- Permissions:
+  - **Display over other apps** (Draw overlays)
+  - **Accessibility Service** (Edge touch detection & system actions like screenshot)
+  - **Notification Listener** (Media metadata and incoming alert banners)
+
+---
+
+## Building
+
+```bash
+git clone https://github.com/Velocity081/droidtools.git
+cd droidtools
+./gradlew assembleRelease
+```
+
+The APK will be output to `app/build/outputs/apk/release/Droidtools.apk`.
+
+---
 
 ## License
 
-Droidbubble is released under the MIT License.
+This project is licensed under the [MIT License](LICENSE).

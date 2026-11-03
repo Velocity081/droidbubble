@@ -11,8 +11,8 @@ android {
         applicationId = "com.droidbubble.app"
         minSdk = 29
         targetSdk = 36
-        versionCode = 12
-        versionName = "1.4.1"
+        versionCode = 13
+        versionName = "2.0.0"
     }
 
     buildTypes {
@@ -27,7 +27,7 @@ android {
     }
 
     base {
-        archivesName.set("Droidbubble")
+        archivesName.set("Droidtools")
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

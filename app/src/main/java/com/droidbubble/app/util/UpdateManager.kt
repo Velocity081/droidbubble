@@ -32,16 +32,16 @@ sealed interface UpdateCheckResult {
 
 object UpdateManager {
 
-    private const val GITHUB_RELEASES_API = "https://api.github.com/repos/Velocity081/droidbubble/releases"
-    private const val GITHUB_RELEASES_ATOM = "https://github.com/Velocity081/droidbubble/releases.atom"
-    private const val DEFAULT_USER_AGENT = "Mozilla/5.0 (Linux; Android 14; Droidbubble) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+    private const val GITHUB_RELEASES_API = "https://api.github.com/repos/Velocity081/droidtools/releases"
+    private const val GITHUB_RELEASES_ATOM = "https://github.com/Velocity081/droidtools/releases.atom"
+    private const val DEFAULT_USER_AGENT = "Mozilla/5.0 (Linux; Android 14; Droidtools) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
 
     fun getCurrentVersion(context: Context): String {
         return try {
             val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            pInfo.versionName ?: "1.4.1"
+            pInfo.versionName ?: "2.0.0"
         } catch (_: Exception) {
-            "1.4.1"
+            "2.0.0"
         }
     }
 
@@ -107,7 +107,7 @@ object UpdateManager {
             }
 
             val finalUrl = apkUrl
-                ?: "https://github.com/Velocity081/droidbubble/releases/download/$tagName/Droidbubble.apk"
+                ?: "https://github.com/Velocity081/droidtools/releases/download/$tagName/Droidtools.apk"
 
             val cleanVersion = tagName.removePrefix("v").removePrefix("V").trim()
             targetRelease = AppReleaseInfo(
@@ -188,7 +188,7 @@ object UpdateManager {
 
             val isBeta = tag.contains("beta", ignoreCase = true) || title.contains("beta", ignoreCase = true)
             val cleanVersion = tag.removePrefix("v").removePrefix("V").trim()
-            val downloadUrl = "https://github.com/Velocity081/droidbubble/releases/download/$tag/Droidbubble.apk"
+            val downloadUrl = "https://github.com/Velocity081/droidtools/releases/download/$tag/Droidtools.apk"
 
             releases.add(
                 AppReleaseInfo(
@@ -281,7 +281,7 @@ object UpdateManager {
             val actualConn = connection ?: return@withContext null
             val totalBytes = actualConn.contentLengthLong.coerceAtLeast(1L)
             val updatesDir = File(context.cacheDir, "updates").apply { mkdirs() }
-            val outputFile = File(updatesDir, "Droidbubble-update.apk")
+            val outputFile = File(updatesDir, "Droidtools-update.apk")
             if (outputFile.exists()) outputFile.delete()
 
             actualConn.inputStream.use { input ->
