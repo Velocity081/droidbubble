@@ -3415,12 +3415,23 @@ fun AuxiliaryBubbleContent(
             }
         }
         IslandPriority.HOTSPOT -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Row(
+                modifier = Modifier.fillMaxHeight(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
                 Icon(
                     imageVector = Icons.Default.WifiTethering,
                     contentDescription = "Hotspot",
                     tint = if (isM3) m3Primary else Color(0xFFFF9F0A),
                     modifier = Modifier.size(15.dp)
+                )
+                val count = hotspotInfo.connectedDeviceCount
+                Text(
+                    text = "$count",
+                    color = if (isM3) m3Primary else Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
@@ -3640,12 +3651,25 @@ fun CompactContent(
             }
 
             IslandPriority.HOTSPOT -> {
-                Icon(
-                    imageVector = Icons.Default.WifiTethering,
-                    contentDescription = "Hotspot",
-                    tint = if (isM3) m3Primary else Color(0xFFFF9F0A),
-                    modifier = Modifier.size(15.dp)
-                )
+                Row(
+                    modifier = Modifier.fillMaxHeight(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.WifiTethering,
+                        contentDescription = "Hotspot",
+                        tint = if (isM3) m3Primary else Color(0xFFFF9F0A),
+                        modifier = Modifier.size(15.dp)
+                    )
+                    val count = hotspotInfo.connectedDeviceCount
+                    Text(
+                        text = "$count",
+                        color = if (isM3) m3Primary else Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
             IslandPriority.ALARM -> {

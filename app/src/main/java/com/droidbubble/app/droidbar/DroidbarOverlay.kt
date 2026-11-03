@@ -15,7 +15,11 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,6 +35,7 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.FlashlightOff
 import androidx.compose.material.icons.filled.FlashlightOn
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.VerticalSplit
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +48,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,13 +57,18 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import com.droidbubble.app.island.IslandStateManager
-import com.droidbubble.app.island.M3Cookie6Shape
+import com.droidbubble.app.island.M3CookieShape
 import com.droidbubble.app.model.IslandSettings
+import com.droidbubble.app.service.IslandAccessibilityService
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
@@ -67,10 +78,14 @@ fun DroidbarOverlay(
     onExpandChanged: (Boolean) -> Unit
 ) {
     val view = LocalView.current
+    val coroutineScope = rememberCoroutineScope()
     val animProgress = remember { Animatable(0f) }
     var isExpanded by remember { mutableStateOf(false) }
     var isWindowExpanded by remember { mutableStateOf(false) }
     var apps by remember { mutableStateOf<List<BarAppInfo>>(emptyList()) }
+
+    // Split-screen selection state
+    var selectedSplitFirstApp by remember { mutableStateOf<BarAppInfo?>(null) }
 
     val isFlashlightOn by IslandStateManager.isFlashlightOn.collectAsState()
 
@@ -106,6 +121,7 @@ fun DroidbarOverlay(
     // Animate expand and collapse smoothly with single Animatable
     LaunchedEffect(isExpanded) {
         if (isExpanded) {
+            selectedSplitFirstApp = null
             isWindowExpanded = true
             onExpandChanged(true)
             val loadedApps = withContext(Dispatchers.IO) {
@@ -120,6 +136,7 @@ fun DroidbarOverlay(
                 )
             )
         } else {
+            selectedSplitFirstApp = null
             animProgress.animateTo(
                 targetValue = 0f,
                 animationSpec = tween(
@@ -168,6 +185,10 @@ fun DroidbarOverlay(
         label = "backdropAlpha"
     )
 
+    // Bounce scales for controls
+    val (flashlightBounceScale, triggerFlashlightBounce) = rememberBounceScale()
+    val (ringerBounceScale, triggerRingerBounce) = rememberBounceScale()
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -180,6 +201,7 @@ fun DroidbarOverlay(
                             interactionSource = remember { MutableInteractionSource() }
                         ) {
                             view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                            selectedSplitFirstApp = null
                             isExpanded = false
                         }
                 } else Modifier
@@ -245,7 +267,7 @@ fun DroidbarOverlay(
                         verticalArrangement = Arrangement.SpaceEvenly,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Flashlight toggle control (Material 3 Expressive Cookie Shape, subtle tonal palette)
+                        // Flashlight toggle control (12-sided M3 Cookie Shape, subtle tonal palette, subtle bounce)
                         if (settings.droidbarShowFlashlight) {
                             val isFlashlightActive = isFlashlightOn
                             val containerColor = if (isFlashlightActive) {
@@ -260,11 +282,17 @@ fun DroidbarOverlay(
                             }
 
                             Surface(
-                                modifier = Modifier.size(44.dp),
-                                shape = M3Cookie6Shape,
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .graphicsLayer {
+                                        scaleX = flashlightBounceScale
+                                        scaleY = flashlightBounceScale
+                                    },
+                                shape = M3CookieShape, // 12-sided cookie shape
                                 color = containerColor,
                                 contentColor = contentColor,
                                 onClick = {
+                                    triggerFlashlightBounce()
                                     view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                                     toggleFlashlight(context)
                                 }
@@ -279,7 +307,7 @@ fun DroidbarOverlay(
                             }
                         }
 
-                        // Ring mode toggle control: ONLY Ring and Vibrate (No Silent mode)
+                        // Ring mode toggle control: ONLY Ring and Vibrate (12-sided M3 Cookie Shape, subtle bounce)
                         if (settings.droidbarShowRingMode) {
                             val isVibrate = currentRingerMode == AudioManager.RINGER_MODE_VIBRATE
                             val containerColor = if (isVibrate) {
@@ -294,11 +322,17 @@ fun DroidbarOverlay(
                             }
 
                             Surface(
-                                modifier = Modifier.size(44.dp),
-                                shape = M3Cookie6Shape,
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .graphicsLayer {
+                                        scaleX = ringerBounceScale
+                                        scaleY = ringerBounceScale
+                                    },
+                                shape = M3CookieShape, // 12-sided cookie shape
                                 color = containerColor,
                                 contentColor = contentColor,
                                 onClick = {
+                                    triggerRingerBounce()
                                     view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                                     toggleRingVibrateMode(context) { newMode ->
                                         currentRingerMode = newMode
@@ -325,14 +359,18 @@ fun DroidbarOverlay(
                             )
                         }
 
-                        // Apps list
+                        // Apps list with 1-second long-press split screen selection and subtle bounce
                         apps.forEach { app ->
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickable {
-                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                            val isFirstSelected = selectedSplitFirstApp?.packageName == app.packageName
+                            val isSplitActive = selectedSplitFirstApp != null
+
+                            DroidbarAppItem(
+                                app = app,
+                                isFirstSplitSelected = isFirstSelected,
+                                isSplitModeActive = isSplitActive,
+                                onTap = {
+                                    if (selectedSplitFirstApp == null) {
+                                        // Regular app launch
                                         val launchIntent = context.packageManager.getLaunchIntentForPackage(app.packageName)?.apply {
                                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                         }
@@ -340,30 +378,144 @@ fun DroidbarOverlay(
                                             runCatching { context.startActivity(launchIntent) }
                                         }
                                         isExpanded = false
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (app.iconBitmap != null) {
-                                    Image(
-                                        bitmap = app.iconBitmap.asImageBitmap(),
-                                        contentDescription = app.label,
-                                        modifier = Modifier.size(38.dp)
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Default.Apps,
-                                        contentDescription = app.label,
-                                        modifier = Modifier.size(24.dp),
-                                        tint = Color.White.copy(alpha = 0.7f)
-                                    )
+                                    } else if (selectedSplitFirstApp?.packageName != app.packageName) {
+                                        // Second app selected for split screen!
+                                        val firstApp = selectedSplitFirstApp!!
+                                        selectedSplitFirstApp = null
+                                        launchSplitScreen(context, firstApp, app)
+                                        isExpanded = false
+                                    } else {
+                                        // Tapped same app again -> cancel selection
+                                        selectedSplitFirstApp = null
+                                    }
+                                },
+                                onLongPress1s = {
+                                    selectedSplitFirstApp = app
                                 }
-                            }
+                            )
                         }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun DroidbarAppItem(
+    app: BarAppInfo,
+    isFirstSplitSelected: Boolean,
+    isSplitModeActive: Boolean,
+    onTap: () -> Unit,
+    onLongPress1s: () -> Unit
+) {
+    val scale = remember { Animatable(1f) }
+    val coroutineScope = rememberCoroutineScope()
+    val view = LocalView.current
+
+    val triggerBounce: () -> Unit = {
+        coroutineScope.launch {
+            scale.animateTo(0.85f, tween(70))
+            scale.animateTo(1f, spring(dampingRatio = 0.52f, stiffness = 500f))
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .graphicsLayer {
+                scaleX = scale.value
+                scaleY = scale.value
+            }
+            .then(
+                if (isFirstSplitSelected) {
+                    Modifier
+                        .border(
+                            width = 2.5.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                        .background(
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                } else if (isSplitModeActive) {
+                    Modifier
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                } else Modifier
+            )
+            .clip(RoundedCornerShape(14.dp))
+            .pointerInput(app.packageName, isSplitModeActive, isFirstSplitSelected) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    var isLongPress = false
+                    val timerJob = coroutineScope.launch {
+                        delay(1000L) // 1 second hold for split-screen selection
+                        isLongPress = true
+                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        triggerBounce()
+                        onLongPress1s()
+                    }
+                    val upOrCancel = waitForUpOrCancellation()
+                    timerJob.cancel()
+                    if (upOrCancel != null && !isLongPress) {
+                        triggerBounce()
+                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                        onTap()
+                    }
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        if (app.iconBitmap != null) {
+            Image(
+                bitmap = app.iconBitmap.asImageBitmap(),
+                contentDescription = app.label,
+                modifier = Modifier.size(38.dp)
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Default.Apps,
+                contentDescription = app.label,
+                modifier = Modifier.size(24.dp),
+                tint = Color.White.copy(alpha = 0.7f)
+            )
+        }
+
+        if (isFirstSplitSelected) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(16.dp)
+                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.VerticalSplit,
+                    contentDescription = "Split 1",
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(11.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun rememberBounceScale(): Pair<Float, () -> Unit> {
+    val scale = remember { Animatable(1f) }
+    val coroutineScope = rememberCoroutineScope()
+    val trigger: () -> Unit = {
+        coroutineScope.launch {
+            scale.animateTo(0.85f, tween(70))
+            scale.animateTo(1f, spring(dampingRatio = 0.52f, stiffness = 500f))
+        }
+    }
+    return Pair(scale.value, trigger)
 }
 
 private fun toggleFlashlight(context: Context) {
@@ -392,4 +544,35 @@ private fun toggleRingVibrateMode(context: Context, onModeChanged: (Int) -> Unit
         am.ringerMode = next
     }
     onModeChanged(am.ringerMode)
+}
+
+/**
+ * Launches App A and App B together in split-screen mode.
+ */
+private fun launchSplitScreen(context: Context, appA: BarAppInfo, appB: BarAppInfo) {
+    val pm = context.packageManager
+    val intentA = pm.getLaunchIntentForPackage(appA.packageName)?.apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    } ?: return
+
+    val intentB = pm.getLaunchIntentForPackage(appB.packageName)?.apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
+    } ?: return
+
+    val accessibilityService = IslandAccessibilityService.instance
+    if (accessibilityService != null) {
+        runCatching { context.startActivity(intentA) }
+        CoroutineScope(Dispatchers.Main).launch {
+            delay(350L)
+            IslandAccessibilityService.toggleSplitScreen()
+            delay(400L)
+            runCatching { context.startActivity(intentB) }
+        }
+    } else {
+        runCatching { context.startActivity(intentA) }
+        CoroutineScope(Dispatchers.Main).launch {
+            delay(350L)
+            runCatching { context.startActivity(intentB) }
+        }
+    }
 }

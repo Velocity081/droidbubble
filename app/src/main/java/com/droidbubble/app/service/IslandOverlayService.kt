@@ -723,7 +723,9 @@ class IslandOverlayService : Service() {
                                 liveSettings.alwaysShowPill ||
                                 liveSettings.showFps ||
                                 liveSettings.showWeather ||
-                                liveSettings.showNetworkSpeed
+                                liveSettings.showNetworkSpeed ||
+                                (liveSettings.showHotspot && IslandStateManager.isHotspotActive) ||
+                                (liveSettings.showAlarm && IslandStateManager.isAlarmActive)
                             touchManager?.updateCompactBounds(
                                 rects = rects,
                                 occupied = interactive,
@@ -900,6 +902,8 @@ class IslandOverlayService : Service() {
             val isRingerMode = currentSettings.showRingerMode && IslandStateManager.isRingerModeActive
             val isAirplaneMode = currentSettings.showAirplaneMode && IslandStateManager.isAirplaneModeActive
             val isFlashlight = currentSettings.showFlashlight && IslandStateManager.isFlashlightActive
+            val isHotspot = currentSettings.showHotspot && IslandStateManager.isHotspotActive
+            val isAlarm = currentSettings.showAlarm && IslandStateManager.isAlarmActive
             val isOccupied = (currentSettings.showCalls && IslandStateManager.isCallActive) ||
                     (currentSettings.showMedia && IslandStateManager.isMediaActive) ||
                     (currentSettings.showNotifications && IslandStateManager.isNotificationActive) ||
@@ -910,8 +914,10 @@ class IslandOverlayService : Service() {
                     isUnlock ||
                     isBluetooth ||
                     isRingerMode ||
-                    isAirplaneMode
-            val hasPersistentWidgets = currentSettings.showFps || currentSettings.showWeather || currentSettings.showNetworkSpeed
+                    isAirplaneMode ||
+                    isHotspot ||
+                    isAlarm
+            val hasPersistentWidgets = currentSettings.showFps || currentSettings.showWeather || currentSettings.showNetworkSpeed || isHotspot || isAlarm
             val shouldShowCompact = isOccupied || currentSettings.alwaysShowPill || hasPersistentWidgets
 
             // Use a unified compact window width across all compact states (single, dual, charging, unlock, ringer)

@@ -24,6 +24,10 @@ class IslandAccessibilityService : AccessibilityService() {
         fun openQuickSettings(): Boolean {
             return instance?.performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS) ?: false
         }
+
+        fun toggleSplitScreen(): Boolean {
+            return instance?.performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN) ?: false
+        }
     }
 
     override fun onServiceConnected() {

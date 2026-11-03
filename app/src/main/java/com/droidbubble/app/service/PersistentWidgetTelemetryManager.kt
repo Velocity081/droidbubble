@@ -53,7 +53,18 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
 
     private val hotspotReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: android.content.Intent?) {
-            checkHotspotState()
+            val state = intent?.getIntExtra("wifi_state", -1) ?: -1
+            if (state == 13) {
+                if (hotspotPollingJob == null || !hotspotPollingJob!!.isActive) {
+                    startHotspotPolling()
+                }
+            } else if (state == 11 || state == 10) {
+                hotspotPollingJob?.cancel()
+                hotspotPollingJob = null
+                IslandStateManager.updateHotspot(IslandStateManager.HotspotInfo(isEnabled = false, connectedDeviceCount = 0))
+            } else {
+                checkHotspotState()
+            }
         }
     }
 
@@ -457,8 +468,14 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
         if (isHotspotMonitoring) return
         isHotspotMonitoring = true
         runCatching {
-            val filter = android.content.IntentFilter("android.net.wifi.WIFI_AP_STATE_CHANGED")
-            context.registerReceiver(hotspotReceiver, filter)
+            val filter = android.content.IntentFilter("android.net.wifi.WIFI_AP_STATE_CHANGED").apply {
+                addAction("android.net.conn.TETHERING_CHANGED")
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(hotspotReceiver, filter, Context.RECEIVER_EXPORTED)
+            } else {
+                context.registerReceiver(hotspotReceiver, filter)
+            }
         }
         checkHotspotState()
     }
@@ -475,15 +492,25 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
     private fun checkHotspotState() {
         val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
         val isEnabled = runCatching {
-            val method = wm?.javaClass?.getDeclaredMethod("isWifiApEnabled")
+            val method = wm?.javaClass?.getMethod("getWifiApState")
             method?.isAccessible = true
-            method?.invoke(wm) as? Boolean ?: false
+            val state = method?.invoke(wm) as? Int ?: -1
+            state == 13 || state == 12
         }.getOrElse {
             runCatching {
-                java.net.NetworkInterface.getNetworkInterfaces()?.toList()?.any {
-                    it.isUp && (it.name.startsWith("ap") || it.name.startsWith("wlan1") || it.name.startsWith("softap") || it.name.startsWith("swlan"))
-                } ?: false
-            }.getOrDefault(false)
+                val method = wm?.javaClass?.getMethod("isWifiApEnabled")
+                method?.isAccessible = true
+                method?.invoke(wm) as? Boolean ?: false
+            }.getOrElse {
+                runCatching {
+                    java.net.NetworkInterface.getNetworkInterfaces()?.toList()?.any { iface ->
+                        iface.isUp && iface.inetAddresses.toList().any { addr ->
+                            val ip = addr.hostAddress ?: ""
+                            ip.startsWith("192.168.43.") || ip.startsWith("192.168.50.") || ip.startsWith("192.168.49.")
+                        }
+                    } ?: false
+                }.getOrDefault(false)
+            }
         }
 
         if (isEnabled) {
@@ -500,6 +527,14 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
     private fun startHotspotPolling() {
         hotspotPollingJob?.cancel()
         hotspotPollingJob = scope.launch(Dispatchers.IO) {
+            withContext(Dispatchers.Main) {
+                IslandStateManager.updateHotspot(
+                    IslandStateManager.HotspotInfo(
+                        isEnabled = true,
+                        connectedDeviceCount = queryConnectedHotspotClients()
+                    )
+                )
+            }
             while (isActive) {
                 val count = queryConnectedHotspotClients()
                 withContext(Dispatchers.Main) {
@@ -510,16 +545,16 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
                         )
                     )
                 }
-                delay(3000L)
+                delay(2000L)
             }
         }
     }
 
     private fun queryConnectedHotspotClients(): Int {
-        return runCatching {
+        val reachableMacs = mutableSetOf<String>()
+        runCatching {
             val process = Runtime.getRuntime().exec("ip neigh")
             val reader = BufferedReader(InputStreamReader(process.inputStream))
-            val reachableMacs = mutableSetOf<String>()
             var line: String?
             while (reader.readLine().also { line = it } != null) {
                 val l = line?.trim() ?: continue
@@ -528,18 +563,36 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
                     val lladdrIdx = parts.indexOf("lladdr")
                     if (lladdrIdx != -1 && lladdrIdx + 1 < parts.size) {
                         val mac = parts[lladdrIdx + 1].lowercase()
-                        val isHotspotDev = l.contains("wlan1") || l.contains("ap") || l.contains("softap") || l.contains("swlan")
-                        if (isHotspotDev || (!l.contains("wlan0") && !l.contains("rmnet"))) {
-                            if (l.contains("REACHABLE") || l.contains("DELAY") || l.contains("PROBE")) {
-                                reachableMacs.add(mac)
-                            }
+                        val ip = parts.firstOrNull() ?: ""
+                        if (ip.startsWith("192.168.43.") || ip.startsWith("192.168.49.") || ip.startsWith("192.168.50.") ||
+                            l.contains(" ap") || l.contains("softap") || l.contains("swlan")) {
+                            reachableMacs.add(mac)
                         }
                     }
                 }
             }
             process.waitFor()
-            reachableMacs.size
-        }.getOrDefault(0)
+        }
+        if (reachableMacs.isEmpty()) {
+            runCatching {
+                val file = java.io.File("/proc/net/arp")
+                if (file.exists() && file.canRead()) {
+                    file.forEachLine { l ->
+                        if (!l.contains("IP address") && !l.contains("00:00:00:00:00:00")) {
+                            val parts = l.trim().split(Regex("\\s+"))
+                            if (parts.size >= 4) {
+                                val ip = parts[0]
+                                val mac = parts[3].lowercase()
+                                if (ip.startsWith("192.168.43.") || ip.startsWith("192.168.49.") || ip.startsWith("192.168.50.")) {
+                                    reachableMacs.add(mac)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return reachableMacs.size
     }
 
     private fun startAlarmMonitoring() {
@@ -547,7 +600,11 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
         isAlarmMonitoring = true
         runCatching {
             val filter = android.content.IntentFilter(android.app.AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED)
-            context.registerReceiver(alarmReceiver, filter)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(alarmReceiver, filter, Context.RECEIVER_EXPORTED)
+            } else {
+                context.registerReceiver(alarmReceiver, filter)
+            }
         }
         startAlarmRefreshLoop()
     }

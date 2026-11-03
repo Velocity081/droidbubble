@@ -250,7 +250,7 @@ object IslandStateManager {
         get() = _activeRingerMode.value != null
 
     val isHotspotActive: Boolean
-        get() = _hotspotInfo.value.isEnabled && _hotspotInfo.value.connectedDeviceCount > 0
+        get() = _hotspotInfo.value.isEnabled
 
     val isAlarmActive: Boolean
         get() = _alarmInfo.value != null
