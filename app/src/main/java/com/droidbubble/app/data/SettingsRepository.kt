@@ -88,6 +88,10 @@ class SettingsRepository(private val context: Context) {
         val DROIDBAR_SHOW_MOBILE_DATA = booleanPreferencesKey("droidbar_show_mobile_data")
         val DROIDBAR_USE_MOST_USED_APPS = booleanPreferencesKey("droidbar_use_most_used_apps")
         val DROIDBAR_CUSTOM_APPS = stringPreferencesKey("droidbar_custom_apps")
+        val DROIDBAR_BACKGROUND_OPACITY = floatPreferencesKey("droidbar_background_opacity")
+        val DROIDBAR_MAX_HEIGHT_DP = intPreferencesKey("droidbar_max_height_dp")
+        val DROIDBAR_Y_OFFSET_DP = intPreferencesKey("droidbar_y_offset_dp")
+        val DROIDBAR_HAPTICS_ENABLED = booleanPreferencesKey("droidbar_haptics_enabled")
     }
 
     val settingsFlow: Flow<IslandSettings> = context.dataStore.data.map { preferences ->
@@ -185,7 +189,11 @@ class SettingsRepository(private val context: Context) {
             droidbarCustomApps = preferences[PreferencesKeys.DROIDBAR_CUSTOM_APPS]
                 ?.split(",")
                 ?.map { it.trim() }
-                ?.filter { it.isNotBlank() } ?: emptyList()
+                ?.filter { it.isNotBlank() } ?: emptyList(),
+            droidbarBackgroundOpacity = preferences[PreferencesKeys.DROIDBAR_BACKGROUND_OPACITY] ?: 1.0f,
+            droidbarMaxHeightDp = preferences[PreferencesKeys.DROIDBAR_MAX_HEIGHT_DP] ?: 600,
+            droidbarYOffsetDp = preferences[PreferencesKeys.DROIDBAR_Y_OFFSET_DP] ?: 0,
+            droidbarHapticsEnabled = preferences[PreferencesKeys.DROIDBAR_HAPTICS_ENABLED] ?: true
         )
     }
 
@@ -285,7 +293,11 @@ class SettingsRepository(private val context: Context) {
             droidbarCustomApps = preferences[PreferencesKeys.DROIDBAR_CUSTOM_APPS]
                 ?.split(",")
                 ?.map { it.trim() }
-                ?.filter { it.isNotBlank() } ?: emptyList()
+                ?.filter { it.isNotBlank() } ?: emptyList(),
+            droidbarBackgroundOpacity = preferences[PreferencesKeys.DROIDBAR_BACKGROUND_OPACITY] ?: 1.0f,
+            droidbarMaxHeightDp = preferences[PreferencesKeys.DROIDBAR_MAX_HEIGHT_DP] ?: 600,
+            droidbarYOffsetDp = preferences[PreferencesKeys.DROIDBAR_Y_OFFSET_DP] ?: 0,
+            droidbarHapticsEnabled = preferences[PreferencesKeys.DROIDBAR_HAPTICS_ENABLED] ?: true
             )
 
             val newSettings = update(current)
@@ -358,6 +370,10 @@ class SettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.DROIDBAR_SHOW_MOBILE_DATA] = newSettings.droidbarShowMobileData
             preferences[PreferencesKeys.DROIDBAR_USE_MOST_USED_APPS] = newSettings.droidbarUseMostUsedApps
             preferences[PreferencesKeys.DROIDBAR_CUSTOM_APPS] = newSettings.droidbarCustomApps.joinToString(",")
+            preferences[PreferencesKeys.DROIDBAR_BACKGROUND_OPACITY] = newSettings.droidbarBackgroundOpacity
+            preferences[PreferencesKeys.DROIDBAR_MAX_HEIGHT_DP] = newSettings.droidbarMaxHeightDp
+            preferences[PreferencesKeys.DROIDBAR_Y_OFFSET_DP] = newSettings.droidbarYOffsetDp
+            preferences[PreferencesKeys.DROIDBAR_HAPTICS_ENABLED] = newSettings.droidbarHapticsEnabled
         }
     }
 }

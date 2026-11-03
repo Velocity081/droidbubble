@@ -640,13 +640,6 @@ fun MainScreen(
                                     ListItem(
                                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                                         headlineContent = { Text("Droidbubble", fontWeight = FontWeight.SemiBold) },
-                                        supportingContent = {
-                                            Text(
-                                                "Dynamic notch and pill notifications overlay",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        },
                                         leadingContent = {
                                             Surface(
                                                 modifier = Modifier.size(38.dp),
@@ -680,13 +673,6 @@ fun MainScreen(
                                     ListItem(
                                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                                         headlineContent = { Text("Droidbar", fontWeight = FontWeight.SemiBold) },
-                                        supportingContent = {
-                                            Text(
-                                                "Minimalist right edge launcher bar",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        },
                                         leadingContent = {
                                             Surface(
                                                 modifier = Modifier.size(38.dp),
@@ -3918,6 +3904,86 @@ fun DroidbarPage(
                                     checked = settings.droidbarShowMobileData,
                                     onCheckedChange = { checked ->
                                         onUpdateSettings { it.copy(droidbarShowMobileData = checked) }
+                                    }
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+
+            // APPEARANCE & FEEDBACK SECTION (NO DESCRIPTIONS)
+            item {
+                SectionHeader(title = "Appearance & Feedback", icon = Icons.Default.Palette)
+            }
+
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    SettingsCardItem(position = GroupPosition.TOP) {
+                        SliderSettingItem(
+                            label = "Background opacity",
+                            value = (settings.droidbarBackgroundOpacity * 100f).roundToInt().toFloat(),
+                            unit = "%",
+                            valueRange = 0f..100f,
+                            onValueChange = { pct ->
+                                onUpdateSettings { it.copy(droidbarBackgroundOpacity = (pct / 100f).coerceIn(0f, 1f)) }
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.MIDDLE) {
+                        SliderSettingItem(
+                            label = "Max height",
+                            value = settings.droidbarMaxHeightDp.toFloat(),
+                            unit = "dp",
+                            valueRange = 160f..600f,
+                            onValueChange = { h ->
+                                onUpdateSettings { it.copy(droidbarMaxHeightDp = h.roundToInt()) }
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.MIDDLE) {
+                        SliderSettingItem(
+                            label = "Y position",
+                            value = settings.droidbarYOffsetDp.toFloat(),
+                            unit = "dp",
+                            valueRange = -250f..250f,
+                            onValueChange = { y ->
+                                onUpdateSettings { it.copy(droidbarYOffsetDp = y.roundToInt()) }
+                            }
+                        )
+                    }
+
+                    SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.droidbarHapticsEnabled) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text("Haptic feedback", fontWeight = FontWeight.SemiBold) },
+                            leadingContent = {
+                                Surface(
+                                    modifier = Modifier.size(38.dp),
+                                    shape = M3Cookie6Shape,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                ) {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Default.Vibration,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.droidbarHapticsEnabled,
+                                    onCheckedChange = { checked ->
+                                        onUpdateSettings { it.copy(droidbarHapticsEnabled = checked) }
                                     }
                                 )
                             }

@@ -114,6 +114,7 @@ class IslandOverlayService : Service() {
     private var layoutParams: WindowManager.LayoutParams? = null
     private var droidbarView: ComposeView? = null
     private var droidbarParams: WindowManager.LayoutParams? = null
+    private var isDroidbarExpanded: Boolean = false
 
     private val lifecycleOwner = CustomLifecycleOwner()
     private var currentSettings = IslandSettings()
@@ -809,7 +810,11 @@ class IslandOverlayService : Service() {
                 }
 
                 if (settings.droidbarEnabled && com.droidbubble.app.ui.main.PermissionHelper.isOverlayGranted(this@IslandOverlayService)) {
-                    initDroidbar()
+                    if (droidbarView == null) {
+                        initDroidbar()
+                    } else if (!isDroidbarExpanded) {
+                        updateDroidbarLayoutParams(false)
+                    }
                 } else {
                     removeDroidbar()
                 }
@@ -1032,7 +1037,8 @@ class IslandOverlayService : Service() {
         val realScreenHeight = getRealScreenHeight(wm)
         val initialWidth = (32 * density).toInt()
         val initialHeight = (72 * density).toInt()
-        val initialY = (realScreenHeight / 2) - (initialHeight / 2)
+        val yOffsetPx = (currentSettings.droidbarYOffsetDp * density).toInt()
+        val initialY = (realScreenHeight / 2) - (initialHeight / 2) + yOffsetPx
 
         val flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
@@ -1109,6 +1115,7 @@ class IslandOverlayService : Service() {
     }
 
     private fun updateDroidbarLayoutParams(isExpanded: Boolean) {
+        isDroidbarExpanded = isExpanded
         val params = droidbarParams ?: return
         val v = droidbarView ?: return
         val wm = windowManager ?: return
@@ -1127,7 +1134,8 @@ class IslandOverlayService : Service() {
             params.width = (32 * density).toInt()
             params.height = (72 * density).toInt()
             params.x = 0
-            params.y = (realScreenHeight / 2) - (params.height / 2)
+            val yOffsetPx = (currentSettings.droidbarYOffsetDp * density).toInt()
+            params.y = (realScreenHeight / 2) - (params.height / 2) + yOffsetPx
             params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or

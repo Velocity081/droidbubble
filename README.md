@@ -1,5 +1,6 @@
 <p align="center">
-  <img src="assets/header.png" alt="Droidtools Preview" width="100%" />
+  <img src="assets/preview_3.png" alt="Droidbar Preview" width="100%" />
+  <img src="assets/preview_2.png" alt="Droidbubble Preview" width="100%" />
 </p>
 
 # Droidtools
@@ -18,8 +19,6 @@
 </p>
 
 ---
-
-# Droidtools
 
 A small collection of overlay tools for Android. Built natively with Kotlin, Jetpack Compose and Material 3.
 

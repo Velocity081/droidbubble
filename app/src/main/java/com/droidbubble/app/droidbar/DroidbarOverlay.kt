@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -83,6 +84,11 @@ fun DroidbarOverlay(
     onExpandChanged: (Boolean) -> Unit
 ) {
     val view = LocalView.current
+    fun performTapHaptic() {
+        if (settings.droidbarHapticsEnabled) {
+            performTapHaptic()
+        }
+    }
     val configuration = LocalConfiguration.current
     val coroutineScope = rememberCoroutineScope()
     val animProgress = remember { Animatable(0f) }
@@ -200,7 +206,8 @@ fun DroidbarOverlay(
 
     val targetExpandedHeight = ((totalItems * 48) + (if (hasControls && hasApps) 14 else 0) + 24).dp.coerceAtLeast(80.dp)
     val maxAvailableHeight = (configuration.screenHeightDp - 64).dp.coerceAtLeast(180.dp)
-    val finalExpandedHeight = targetExpandedHeight.coerceAtMost(maxAvailableHeight)
+    val configuredMaxHeight = settings.droidbarMaxHeightDp.dp
+    val finalExpandedHeight = targetExpandedHeight.coerceAtMost(configuredMaxHeight).coerceAtMost(maxAvailableHeight)
 
     val progress = animProgress.value.coerceIn(0f, 1.25f)
 
@@ -244,7 +251,7 @@ fun DroidbarOverlay(
                             indication = null,
                             interactionSource = remember { MutableInteractionSource() }
                         ) {
-                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                            performTapHaptic()
                             isExpanded = false
                         }
                 } else Modifier
@@ -258,9 +265,12 @@ fun DroidbarOverlay(
             bottomEnd = endRadius
         )
 
-        // The Droidbar surface: fully opaque black, NO outline, smooth collapse and bounce expand
+        val yOffsetDp = if (isExpanded) settings.droidbarYOffsetDp.dp else 0.dp
+
+        // The Droidbar surface: customizable opacity, NO outline, smooth collapse and bounce expand
         Box(
             modifier = Modifier
+                .offset(y = yOffsetDp)
                 .padding(end = endMargin)
                 .width(barWidth)
                 .height(barHeight)
@@ -269,13 +279,13 @@ fun DroidbarOverlay(
                     shape = currentShape
                 )
                 .clip(currentShape)
-                .background(Color.Black)
+                .background(Color.Black.copy(alpha = settings.droidbarBackgroundOpacity.coerceIn(0f, 1f)))
                 .clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() }
                 ) {
                     if (!isExpanded) {
-                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                        performTapHaptic()
                         isExpanded = true
                     }
                 },
@@ -337,7 +347,7 @@ fun DroidbarOverlay(
                                 contentColor = contentColor,
                                 onClick = {
                                     triggerFlashlightBounce()
-                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    performTapHaptic()
                                     toggleFlashlight(context)
                                 }
                             ) {
@@ -377,7 +387,7 @@ fun DroidbarOverlay(
                                 contentColor = contentColor,
                                 onClick = {
                                     triggerRingerBounce()
-                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    performTapHaptic()
                                     toggleRingVibrateMode(context) { newMode ->
                                         currentRingerMode = newMode
                                     }
@@ -407,7 +417,7 @@ fun DroidbarOverlay(
                                 contentColor = Color.White.copy(alpha = 0.85f),
                                 onClick = {
                                     triggerScreenshotBounce()
-                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    performTapHaptic()
                                     isExpanded = false
                                     coroutineScope.launch {
                                         delay(180L)
@@ -453,7 +463,7 @@ fun DroidbarOverlay(
                                 contentColor = contentColor,
                                 onClick = {
                                     triggerWifiBounce()
-                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    performTapHaptic()
                                     isExpanded = false
                                     toggleOrOpenWifi(context)
                                 }
@@ -493,7 +503,7 @@ fun DroidbarOverlay(
                                 contentColor = contentColor,
                                 onClick = {
                                     triggerMobileDataBounce()
-                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    performTapHaptic()
                                     isExpanded = false
                                     openMobileDataPanel(context)
                                 }
@@ -522,6 +532,7 @@ fun DroidbarOverlay(
                         apps.forEach { app ->
                             DroidbarAppItem(
                                 app = app,
+                                hapticsEnabled = settings.droidbarHapticsEnabled,
                                 onTap = {
                                     val launchIntent = context.packageManager.getLaunchIntentForPackage(app.packageName)?.apply {
                                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -543,6 +554,7 @@ fun DroidbarOverlay(
 @Composable
 private fun DroidbarAppItem(
     app: BarAppInfo,
+    hapticsEnabled: Boolean,
     onTap: () -> Unit
 ) {
     val (bounceScale, triggerBounce) = rememberBounceScale()
@@ -559,7 +571,9 @@ private fun DroidbarAppItem(
         color = Color.Transparent,
         onClick = {
             triggerBounce()
-            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            if (hapticsEnabled) {
+                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            }
             onTap()
         }
     ) {

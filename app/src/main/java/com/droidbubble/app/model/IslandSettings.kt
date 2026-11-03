@@ -93,7 +93,11 @@ data class IslandSettings(
     val droidbarShowWifi: Boolean = true,
     val droidbarShowMobileData: Boolean = true,
     val droidbarUseMostUsedApps: Boolean = true,
-    val droidbarCustomApps: List<String> = emptyList()
+    val droidbarCustomApps: List<String> = emptyList(),
+    val droidbarBackgroundOpacity: Float = 1.0f,
+    val droidbarMaxHeightDp: Int = 600,
+    val droidbarYOffsetDp: Int = 0,
+    val droidbarHapticsEnabled: Boolean = true
 ) {
     val isGlass: Boolean get() = designLanguage == DesignLanguage.GLASS || glassEnabled
     val isMaterial3: Boolean get() = designLanguage == DesignLanguage.MATERIAL3
