@@ -86,7 +86,8 @@ class SettingsRepository(private val context: Context) {
         val DROIDBAR_SHOW_SCREENSHOT = booleanPreferencesKey("droidbar_show_screenshot")
         val DROIDBAR_SHOW_WIFI = booleanPreferencesKey("droidbar_show_wifi")
         val DROIDBAR_SHOW_MOBILE_DATA = booleanPreferencesKey("droidbar_show_mobile_data")
-        val DROIDBAR_SHOW_SCREEN_RECORD = booleanPreferencesKey("droidbar_show_screen_record")
+        val DROIDBAR_USE_MOST_USED_APPS = booleanPreferencesKey("droidbar_use_most_used_apps")
+        val DROIDBAR_CUSTOM_APPS = stringPreferencesKey("droidbar_custom_apps")
     }
 
     val settingsFlow: Flow<IslandSettings> = context.dataStore.data.map { preferences ->
@@ -180,7 +181,11 @@ class SettingsRepository(private val context: Context) {
             droidbarShowScreenshot = preferences[PreferencesKeys.DROIDBAR_SHOW_SCREENSHOT] ?: true,
             droidbarShowWifi = preferences[PreferencesKeys.DROIDBAR_SHOW_WIFI] ?: true,
             droidbarShowMobileData = preferences[PreferencesKeys.DROIDBAR_SHOW_MOBILE_DATA] ?: true,
-            droidbarShowScreenRecord = preferences[PreferencesKeys.DROIDBAR_SHOW_SCREEN_RECORD] ?: true
+            droidbarUseMostUsedApps = preferences[PreferencesKeys.DROIDBAR_USE_MOST_USED_APPS] ?: true,
+            droidbarCustomApps = preferences[PreferencesKeys.DROIDBAR_CUSTOM_APPS]
+                ?.split(",")
+                ?.map { it.trim() }
+                ?.filter { it.isNotBlank() } ?: emptyList()
         )
     }
 
@@ -276,7 +281,11 @@ class SettingsRepository(private val context: Context) {
             droidbarShowScreenshot = preferences[PreferencesKeys.DROIDBAR_SHOW_SCREENSHOT] ?: true,
             droidbarShowWifi = preferences[PreferencesKeys.DROIDBAR_SHOW_WIFI] ?: true,
             droidbarShowMobileData = preferences[PreferencesKeys.DROIDBAR_SHOW_MOBILE_DATA] ?: true,
-            droidbarShowScreenRecord = preferences[PreferencesKeys.DROIDBAR_SHOW_SCREEN_RECORD] ?: true
+            droidbarUseMostUsedApps = preferences[PreferencesKeys.DROIDBAR_USE_MOST_USED_APPS] ?: true,
+            droidbarCustomApps = preferences[PreferencesKeys.DROIDBAR_CUSTOM_APPS]
+                ?.split(",")
+                ?.map { it.trim() }
+                ?.filter { it.isNotBlank() } ?: emptyList()
             )
 
             val newSettings = update(current)
@@ -347,7 +356,8 @@ class SettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.DROIDBAR_SHOW_SCREENSHOT] = newSettings.droidbarShowScreenshot
             preferences[PreferencesKeys.DROIDBAR_SHOW_WIFI] = newSettings.droidbarShowWifi
             preferences[PreferencesKeys.DROIDBAR_SHOW_MOBILE_DATA] = newSettings.droidbarShowMobileData
-            preferences[PreferencesKeys.DROIDBAR_SHOW_SCREEN_RECORD] = newSettings.droidbarShowScreenRecord
+            preferences[PreferencesKeys.DROIDBAR_USE_MOST_USED_APPS] = newSettings.droidbarUseMostUsedApps
+            preferences[PreferencesKeys.DROIDBAR_CUSTOM_APPS] = newSettings.droidbarCustomApps.joinToString(",")
         }
     }
 }

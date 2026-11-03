@@ -54,11 +54,6 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".service.ScreenRecordPromptActivity"
-            android:exported="false"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar"
-            android:excludeFromRecents="true" />
 
         <!-- Dynamic Island WindowManager Overlay Service -->
         <service

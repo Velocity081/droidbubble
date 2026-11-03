@@ -41,9 +41,7 @@ import androidx.compose.material.icons.filled.FlashlightOn
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Screenshot
 import androidx.compose.material.icons.filled.SignalCellularAlt
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Vibration
-import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -73,8 +71,6 @@ import com.droidbubble.app.island.IslandStateManager
 import com.droidbubble.app.island.M3CookieShape
 import com.droidbubble.app.model.IslandSettings
 import com.droidbubble.app.service.IslandAccessibilityService
-import com.droidbubble.app.service.ScreenRecordPromptActivity
-import com.droidbubble.app.service.ScreenRecordingService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -94,10 +90,8 @@ fun DroidbarOverlay(
     var isWindowExpanded by remember { mutableStateOf(false) }
     var apps by remember { mutableStateOf<List<BarAppInfo>>(emptyList()) }
 
-    // Flashlight & Screen Recording states from IslandStateManager
+    // Flashlight state from IslandStateManager
     val isFlashlightOn by IslandStateManager.isFlashlightOn.collectAsState()
-    val screenRecState by IslandStateManager.screenRecordingState.collectAsState()
-    val isRecordingActive = screenRecState.isRecording
 
     // Ringer mode state
     var currentRingerMode by remember {
@@ -152,12 +146,19 @@ fun DroidbarOverlay(
         }
     }
 
-    // Initial load of apps
-    LaunchedEffect(Unit) {
-        val loadedApps = withContext(Dispatchers.IO) {
-            MostUsedAppsHelper.getMostUsedApps(context, limit = 6)
+    val loadApps: suspend () -> List<BarAppInfo> = {
+        withContext(Dispatchers.IO) {
+            if (settings.droidbarUseMostUsedApps) {
+                MostUsedAppsHelper.getMostUsedApps(context, limit = 6)
+            } else {
+                val custom = MostUsedAppsHelper.getAppsByPackages(context, settings.droidbarCustomApps)
+                if (custom.isNotEmpty()) custom else MostUsedAppsHelper.getMostUsedApps(context, limit = 6)
+            }
         }
-        apps = loadedApps
+    }
+
+    LaunchedEffect(settings.droidbarUseMostUsedApps, settings.droidbarCustomApps) {
+        apps = loadApps()
     }
 
     // Animate expand and collapse smoothly with single Animatable
@@ -165,10 +166,7 @@ fun DroidbarOverlay(
         if (isExpanded) {
             isWindowExpanded = true
             onExpandChanged(true)
-            val loadedApps = withContext(Dispatchers.IO) {
-                MostUsedAppsHelper.getMostUsedApps(context, limit = 6)
-            }
-            apps = loadedApps
+            apps = loadApps()
             animProgress.animateTo(
                 targetValue = 1f,
                 animationSpec = spring(
@@ -193,8 +191,7 @@ fun DroidbarOverlay(
             (if (settings.droidbarShowRingMode) 1 else 0) +
             (if (settings.droidbarShowScreenshot) 1 else 0) +
             (if (settings.droidbarShowWifi) 1 else 0) +
-            (if (settings.droidbarShowMobileData) 1 else 0) +
-            (if (settings.droidbarShowScreenRecord) 1 else 0)
+            (if (settings.droidbarShowMobileData) 1 else 0)
 
     val hasControls = controlCount > 0
     val appCount = apps.size
@@ -235,7 +232,6 @@ fun DroidbarOverlay(
     val (screenshotBounceScale, triggerScreenshotBounce) = rememberBounceScale()
     val (wifiBounceScale, triggerWifiBounce) = rememberBounceScale()
     val (mobileDataBounceScale, triggerMobileDataBounce) = rememberBounceScale()
-    val (recordBounceScale, triggerRecordBounce) = rememberBounceScale()
 
     Box(
         modifier = Modifier
@@ -506,59 +502,6 @@ fun DroidbarOverlay(
                                     Icon(
                                         imageVector = Icons.Default.SignalCellularAlt,
                                         contentDescription = "Mobile Data",
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        // 6. Screen Record control: Start recording / Stop recording (12-sided M3 Cookie Shape, subtle bounce)
-                        if (settings.droidbarShowScreenRecord) {
-                            val containerColor = if (isRecordingActive) {
-                                MaterialTheme.colorScheme.errorContainer
-                            } else {
-                                Color.White.copy(alpha = 0.10f)
-                            }
-                            val contentColor = if (isRecordingActive) {
-                                MaterialTheme.colorScheme.error
-                            } else {
-                                Color.White.copy(alpha = 0.85f)
-                            }
-
-                            Surface(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .graphicsLayer {
-                                        scaleX = recordBounceScale
-                                        scaleY = recordBounceScale
-                                    },
-                                shape = M3CookieShape,
-                                color = containerColor,
-                                contentColor = contentColor,
-                                onClick = {
-                                    triggerRecordBounce()
-                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                    if (isRecordingActive) {
-                                        // STOP recording immediately
-                                        IslandStateManager.onStopRecording?.invoke()
-                                        val stopIntent = Intent(context, ScreenRecordingService::class.java).apply {
-                                            action = ScreenRecordingService.ACTION_STOP
-                                        }
-                                        runCatching { context.startService(stopIntent) }
-                                    } else {
-                                        // START recording: collapse Droidbar and launch prompt activity
-                                        isExpanded = false
-                                        val promptIntent = Intent(context, ScreenRecordPromptActivity::class.java).apply {
-                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                        }
-                                        runCatching { context.startActivity(promptIntent) }
-                                    }
-                                }
-                            ) {
-                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = if (isRecordingActive) Icons.Default.Stop else Icons.Default.Videocam,
-                                        contentDescription = if (isRecordingActive) "Stop Recording" else "Start Recording",
                                         modifier = Modifier.size(22.dp)
                                     )
                                 }

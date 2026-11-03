@@ -1,5 +1,23 @@
 package com.droidbubble.app.ui.main
 
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.Velocity
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.foundation.lazy.rememberLazyListState
+
 import com.droidbubble.app.island.M3CookieShape
 import com.droidbubble.app.island.M3Cookie6Shape
 import androidx.compose.material.icons.filled.WifiTethering
@@ -220,7 +238,8 @@ enum class MainScreenPage {
     APPEARANCE,
     GENERAL,
     MEDIA_PLAYER,
-    DROIDBAR
+    DROIDBAR,
+    DROIDBAR_APPS
 }
 
 
@@ -360,6 +379,7 @@ fun MainScreen(
     var showGeneralPage by remember { mutableStateOf(false) }
     var showMediaPlayerPage by remember { mutableStateOf(false) }
     var showDroidbarPage by remember { mutableStateOf(false) }
+    var showDroidbarAppsPage by remember { mutableStateOf(false) }
     var showFeedbackSheet by remember { mutableStateOf(false) }
     var feedbackType by remember { mutableStateOf(FeedbackType.BUG) }
     var feedbackTitle by remember { mutableStateOf("") }
@@ -394,6 +414,7 @@ fun MainScreen(
     }
 
     val currentNavPage = when {
+        showDroidbarAppsPage -> MainScreenPage.DROIDBAR_APPS
         showDroidbarPage -> MainScreenPage.DROIDBAR
         showMediaPlayerPage -> MainScreenPage.MEDIA_PLAYER
         showDimensionsPage -> MainScreenPage.DIMENSIONS
@@ -410,6 +431,7 @@ fun MainScreen(
                 initialState == MainScreenPage.TOOLS_ROOT && targetState != MainScreenPage.TOOLS_ROOT -> true
                 initialState == MainScreenPage.DROIDBUBBLE && (targetState == MainScreenPage.DIMENSIONS || targetState == MainScreenPage.APPEARANCE || targetState == MainScreenPage.GENERAL || targetState == MainScreenPage.MEDIA_PLAYER) -> true
                 initialState == MainScreenPage.APPEARANCE && targetState == MainScreenPage.MEDIA_PLAYER -> true
+                initialState == MainScreenPage.DROIDBAR && targetState == MainScreenPage.DROIDBAR_APPS -> true
                 else -> false
             }
             if (isNavigatingForward) {
@@ -468,7 +490,16 @@ fun MainScreen(
                 DroidbarPage(
                     settings = settings,
                     onUpdateSettings = { viewModel.updateSettings(it) },
+                    onOpenAppsConfig = { showDroidbarAppsPage = true },
                     onBack = { showDroidbarPage = false },
+                    modifier = modifier
+                )
+            }
+            MainScreenPage.DROIDBAR_APPS -> {
+                DroidbarAppsConfigPage(
+                    settings = settings,
+                    onUpdateSettings = { viewModel.updateSettings(it) },
+                    onBack = { showDroidbarAppsPage = false },
                     modifier = modifier
                 )
             }
@@ -481,32 +512,104 @@ fun MainScreen(
                 )
             }
             MainScreenPage.TOOLS_ROOT -> {
+                val toolsListState = rememberLazyListState()
+                var overscrollOffset by remember { mutableFloatStateOf(0f) }
+                val animatedOverscroll by animateFloatAsState(
+                    targetValue = overscrollOffset,
+                    animationSpec = spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMediumLow),
+                    label = "overscrollOffset"
+                )
+
+                val nestedScrollConnection = remember {
+                    object : NestedScrollConnection {
+                        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                            if (available.y < 0 && overscrollOffset > 0f) {
+                                val consumed = available.y.coerceAtLeast(-overscrollOffset)
+                                overscrollOffset += consumed
+                                return Offset(0f, consumed)
+                            }
+                            return Offset.Zero
+                        }
+
+                        override fun onPostScroll(
+                            consumed: Offset,
+                            available: Offset,
+                            source: NestedScrollSource
+                        ): Offset {
+                            if (available.y > 0 && toolsListState.firstVisibleItemIndex == 0 && toolsListState.firstVisibleItemScrollOffset == 0) {
+                                val delta = available.y * 0.45f
+                                overscrollOffset = (overscrollOffset + delta).coerceAtMost(160f)
+                                return Offset(0f, available.y)
+                            }
+                            return Offset.Zero
+                        }
+
+                        override suspend fun onPreFling(available: Velocity): Velocity {
+                            overscrollOffset = 0f
+                            return Velocity.Zero
+                        }
+
+                        override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                            overscrollOffset = 0f
+                            return Velocity.Zero
+                        }
+                    }
+                }
+
+                val expandProgress = (animatedOverscroll / 70f).coerceIn(0f, 1f)
+                val appVersion = remember { com.droidbubble.app.util.UpdateManager.getCurrentVersion(context) }
+                val titleSize = (20f + (expandProgress * 8f)).sp
+                val topBarHeight = (64.dp + (expandProgress * 36).dp)
+
                 Scaffold(
-                    modifier = modifier,
+                    modifier = modifier.nestedScroll(nestedScrollConnection),
                     topBar = {
-                        TopAppBar(
-                            title = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(topBarHeight)
+                                .background(MaterialTheme.colorScheme.background)
+                                .statusBarsPadding(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
                                 Text(
                                     text = "Droidtools",
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = titleSize,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    letterSpacing = if (expandProgress > 0.05f) (0.5.sp * expandProgress) else 0.sp
                                 )
-                            },
-                            actions = {
-                                IconButton(onClick = { showFeedbackSheet = true }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Feedback,
-                                        contentDescription = "Send Feedback",
-                                        tint = MaterialTheme.colorScheme.primary
+                                if (expandProgress > 0.02f) {
+                                    Text(
+                                        text = "v$appVersion",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = expandProgress),
+                                        modifier = Modifier.graphicsLayer { alpha = expandProgress }
                                     )
                                 }
-                            },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.background
-                            )
-                        )
+                            }
+
+                            IconButton(
+                                onClick = { showFeedbackSheet = true },
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .padding(end = 8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Feedback,
+                                    contentDescription = "Send Feedback",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
                     }
                 ) { innerPadding ->
                     LazyColumn(
+                        state = toolsListState,
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding),
@@ -529,108 +632,87 @@ fun MainScreen(
                         }
 
                         item {
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(24.dp))
-                                    .clickable { showDroidbubblePage = true },
-                                shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                tonalElevation = 2.dp
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                                ) {
-                                    Surface(
-                                        modifier = Modifier.size(52.dp),
-                                        shape = M3Cookie6Shape,
-                                        color = MaterialTheme.colorScheme.primaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                    ) {
-                                        Box(
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Widgets,
-                                                contentDescription = "Droidbubble",
-                                                modifier = Modifier.size(28.dp),
-                                                tint = MaterialTheme.colorScheme.primary
+                                SettingsCardItem(position = GroupPosition.TOP) {
+                                    ListItem(
+                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                        headlineContent = { Text("Droidbubble", fontWeight = FontWeight.SemiBold) },
+                                        supportingContent = {
+                                            Text(
+                                                "Dynamic notch and pill notifications overlay",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
-                                        }
-                                    }
-
-                                    Text(
-                                        text = "Droidbubble",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.weight(1f)
-                                    )
-
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                        contentDescription = "Open Droidbubble",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                        modifier = Modifier.size(18.dp)
+                                        },
+                                        leadingContent = {
+                                            Surface(
+                                                modifier = Modifier.size(38.dp),
+                                                shape = M3Cookie6Shape,
+                                                color = MaterialTheme.colorScheme.primaryContainer,
+                                                contentColor = MaterialTheme.colorScheme.primary
+                                            ) {
+                                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Widgets,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(20.dp),
+                                                        tint = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                            }
+                                        },
+                                        trailingContent = {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                                contentDescription = "Open Droidbubble",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        },
+                                        modifier = Modifier.clickable { showDroidbubblePage = true }
                                     )
                                 }
-                            }
-                        }
 
-                        item {
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(24.dp))
-                                    .clickable { showDroidbarPage = true },
-                                shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                tonalElevation = 2.dp
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                                ) {
-                                    Surface(
-                                        modifier = Modifier.size(52.dp),
-                                        shape = M3Cookie6Shape,
-                                        color = MaterialTheme.colorScheme.primaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                    ) {
-                                        Box(
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.VerticalSplit,
-                                                contentDescription = "Droidbar",
-                                                modifier = Modifier.size(28.dp),
-                                                tint = MaterialTheme.colorScheme.primary
+                                SettingsCardItem(position = GroupPosition.BOTTOM) {
+                                    ListItem(
+                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                        headlineContent = { Text("Droidbar", fontWeight = FontWeight.SemiBold) },
+                                        supportingContent = {
+                                            Text(
+                                                "Minimalist right edge launcher bar",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
-                                        }
-                                    }
-
-                                    Text(
-                                        text = "Droidbar",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.weight(1f)
-                                    )
-
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                        contentDescription = "Open Droidbar",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                        modifier = Modifier.size(18.dp)
+                                        },
+                                        leadingContent = {
+                                            Surface(
+                                                modifier = Modifier.size(38.dp),
+                                                shape = M3Cookie6Shape,
+                                                color = MaterialTheme.colorScheme.primaryContainer,
+                                                contentColor = MaterialTheme.colorScheme.primary
+                                            ) {
+                                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.VerticalSplit,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(20.dp),
+                                                        tint = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                            }
+                                        },
+                                        trailingContent = {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                                contentDescription = "Open Droidbar",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        },
+                                        modifier = Modifier.clickable { showDroidbarPage = true }
                                     )
                                 }
                             }
@@ -3534,6 +3616,7 @@ fun MediaPlayerCustomizationPage(
 fun DroidbarPage(
     settings: IslandSettings,
     onUpdateSettings: ((IslandSettings) -> IslandSettings) -> Unit,
+    onOpenAppsConfig: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -3595,6 +3678,44 @@ fun DroidbarPage(
                                 }
                             )
                         }
+                    )
+                }
+            }
+
+            // CHEVRON TAB TO CONFIGURE APPS
+            item {
+                SettingsCardItem(position = GroupPosition.SINGLE) {
+                    ListItem(
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        headlineContent = { Text("Configure displayed apps", fontWeight = FontWeight.SemiBold) },
+                        supportingContent = {
+                            Text(
+                                if (settings.droidbarUseMostUsedApps) "6 most used apps (auto)" else "Custom app selection",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        leadingContent = {
+                            Surface(
+                                modifier = Modifier.size(38.dp),
+                                shape = M3Cookie6Shape,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.primary
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.Apps, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        },
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                contentDescription = "Configure",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        modifier = Modifier.clickable { onOpenAppsConfig() }
                     )
                 }
             }
@@ -3771,7 +3892,7 @@ fun DroidbarPage(
                         )
                     }
 
-                    SettingsCardItem(position = GroupPosition.MIDDLE) {
+                    SettingsCardItem(position = GroupPosition.BOTTOM) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             headlineContent = { Text("Mobile data", fontWeight = FontWeight.SemiBold) },
@@ -3802,40 +3923,305 @@ fun DroidbarPage(
                             }
                         )
                     }
+                }
+            }
+        }
+    }
+}
 
-                    SettingsCardItem(position = GroupPosition.BOTTOM) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Screen record", fontWeight = FontWeight.SemiBold) },
-                            leadingContent = {
-                                Surface(
-                                    modifier = Modifier.size(38.dp),
-                                    shape = M3Cookie6Shape,
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.primary
-                                ) {
-                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            Icons.Default.Videocam,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(20.dp),
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DroidbarAppsConfigPage(
+    settings: IslandSettings,
+    onUpdateSettings: ((IslandSettings) -> IslandSettings) -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    BackHandler(onBack = onBack)
+    val context = LocalContext.current
+    var slotToEdit by remember { mutableIntStateOf(-1) }
+    var showAppPicker by remember { mutableStateOf(false) }
+
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            TopAppBar(
+                title = { Text("Configure Apps", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
+            )
+        }
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // TOGGLE: USE MOST USED APPS
+            item {
+                SettingsCardItem(position = GroupPosition.SINGLE) {
+                    ListItem(
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        headlineContent = { Text("Use most used apps", fontWeight = FontWeight.SemiBold) },
+                        supportingContent = {
+                            Text(
+                                "Automatically display your 6 most frequently used apps in Droidbar",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        trailingContent = {
+                            Switch(
+                                checked = settings.droidbarUseMostUsedApps,
+                                onCheckedChange = { checked ->
+                                    onUpdateSettings { it.copy(droidbarUseMostUsedApps = checked) }
                                 }
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.droidbarShowScreenRecord,
-                                    onCheckedChange = { checked ->
-                                        onUpdateSettings { it.copy(droidbarShowScreenRecord = checked) }
+                            )
+                        }
+                    )
+                }
+            }
+
+            // WHEN OFF: MANUALLY CHANGE EACH APP
+            if (!settings.droidbarUseMostUsedApps) {
+                item {
+                    SectionHeader(title = "App Slots (1 - 6)")
+                }
+
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        val pm = context.packageManager
+                        for (slotIndex in 0 until 6) {
+                            val pkg = settings.droidbarCustomApps.getOrNull(slotIndex)
+                            val appInfo = remember(pkg) {
+                                if (!pkg.isNullOrBlank()) {
+                                    runCatching {
+                                        val ai = pm.getApplicationInfo(pkg, 0)
+                                        BarAppInfo(
+                                            packageName = pkg,
+                                            label = pm.getApplicationLabel(ai).toString(),
+                                            iconBitmap = MostUsedAppsHelper.drawableToBitmap(pm.getApplicationIcon(ai))
+                                        )
+                                    }.getOrNull()
+                                } else null
+                            }
+
+                            val position = when (slotIndex) {
+                                0 -> GroupPosition.TOP
+                                5 -> GroupPosition.BOTTOM
+                                else -> GroupPosition.MIDDLE
+                            }
+
+                            SettingsCardItem(position = position) {
+                                ListItem(
+                                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                    headlineContent = {
+                                        Text(
+                                            text = appInfo?.label ?: "Slot ${slotIndex + 1}: Select App",
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    },
+                                    supportingContent = {
+                                        Text(
+                                            text = if (appInfo != null) "Slot ${slotIndex + 1} • Tap to change" else "Slot ${slotIndex + 1} (Empty)",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    },
+                                    leadingContent = {
+                                        Surface(
+                                            modifier = Modifier.size(38.dp),
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                        ) {
+                                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                if (appInfo?.iconBitmap != null) {
+                                                    Image(
+                                                        bitmap = appInfo.iconBitmap.asImageBitmap(),
+                                                        contentDescription = appInfo.label,
+                                                        modifier = Modifier.size(28.dp)
+                                                    )
+                                                } else {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Add,
+                                                        contentDescription = "Add",
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    },
+                                    trailingContent = {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                            contentDescription = "Select",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    },
+                                    modifier = Modifier.clickable {
+                                        slotToEdit = slotIndex
+                                        showAppPicker = true
                                     }
                                 )
                             }
-                        )
+                        }
                     }
                 }
             }
         }
     }
+
+    if (showAppPicker && slotToEdit >= 0) {
+        AppPickerDialog(
+            onDismiss = {
+                showAppPicker = false
+                slotToEdit = -1
+            },
+            onSelectApp = { selectedApp ->
+                val current = settings.droidbarCustomApps.toMutableList()
+                while (current.size <= slotToEdit) {
+                    current.add("")
+                }
+                current[slotToEdit] = selectedApp.packageName
+                onUpdateSettings { it.copy(droidbarCustomApps = current) }
+                showAppPicker = false
+                slotToEdit = -1
+            }
+        )
+    }
+}
+
+@Composable
+fun AppPickerDialog(
+    onDismiss: () -> Unit,
+    onSelectApp: (BarAppInfo) -> Unit
+) {
+    val context = LocalContext.current
+    var searchQuery by remember { mutableStateOf("") }
+    var allApps by remember { mutableStateOf<List<BarAppInfo>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        val loaded = withContext(Dispatchers.IO) {
+            MostUsedAppsHelper.getAllInstalledApps(context)
+        }
+        allApps = loaded
+        isLoading = false
+    }
+
+    val filteredApps = remember(allApps, searchQuery) {
+        if (searchQuery.isBlank()) allApps
+        else allApps.filter {
+            it.label.contains(searchQuery, ignoreCase = true) ||
+                    it.packageName.contains(searchQuery, ignoreCase = true)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("Select an App", fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 200.dp, max = 450.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search apps...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                )
+
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(150.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(filteredApps, key = { it.packageName }) { app ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { onSelectApp(app) }
+                                    .padding(vertical = 8.dp, horizontal = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                if (app.iconBitmap != null) {
+                                    Image(
+                                        bitmap = app.iconBitmap.asImageBitmap(),
+                                        contentDescription = app.label,
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Apps,
+                                        contentDescription = app.label,
+                                        modifier = Modifier.size(36.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = app.label,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = app.packageName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

@@ -112,5 +112,35 @@ object MostUsedAppsHelper {
                 )
             }
     }
-}
+    fun getAllInstalledApps(context: Context): List<BarAppInfo> {
+        val pm = context.packageManager
+        val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val resolveInfos = pm.queryIntentActivities(launcherIntent, 0)
+        return resolveInfos
+            .filter { it.activityInfo.packageName != context.packageName }
+            .map { res ->
+                BarAppInfo(
+                    packageName = res.activityInfo.packageName,
+                    label = res.loadLabel(pm).toString(),
+                    iconBitmap = drawableToBitmap(res.loadIcon(pm))
+                )
+            }
+            .sortedBy { it.label.lowercase() }
+    }
 
+    fun getAppsByPackages(context: Context, packages: List<String>): List<BarAppInfo> {
+        val pm = context.packageManager
+        return packages.mapNotNull { pkg ->
+            try {
+                val appInfo = pm.getApplicationInfo(pkg, 0)
+                BarAppInfo(
+                    packageName = pkg,
+                    label = pm.getApplicationLabel(appInfo).toString(),
+                    iconBitmap = drawableToBitmap(pm.getApplicationIcon(appInfo))
+                )
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+}
