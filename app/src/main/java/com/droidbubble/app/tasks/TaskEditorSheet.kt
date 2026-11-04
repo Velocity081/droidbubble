@@ -1,4 +1,4 @@
-package com.droidbubble.app.tasks
+﻿package com.droidbubble.app.tasks
 
 import androidx.activity.compose.BackHandler
 
@@ -26,7 +26,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.droidbubble.app.island.M3CookieShape
 import com.droidbubble.app.ui.main.AppPickerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,7 +57,7 @@ fun TaskEditorScreen(
     }
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 title = {
@@ -122,9 +121,9 @@ fun TaskEditorScreen(
                         Surface(
                             modifier = Modifier
                                 .size(56.dp)
-                                .clip(M3CookieShape)
+                                .clip(RoundedCornerShape(12.dp))
                                 .clickable { showIconPicker = true },
-                            shape = M3CookieShape,
+                            shape = RoundedCornerShape(12.dp),
                             color = MaterialTheme.colorScheme.primaryContainer,
                             contentColor = MaterialTheme.colorScheme.primary
                         ) {
@@ -309,17 +308,17 @@ fun TaskEditorScreen(
                             Surface(
                                 modifier = Modifier
                                     .size(52.dp)
-                                    .clip(M3CookieShape)
+                                    .clip(RoundedCornerShape(12.dp))
                                     .clickable {
                                         selectedIconName = iconName
                                         showIconPicker = false
                                     }
                                     .then(
                                         if (isSelected) {
-                                            Modifier.border(2.dp, MaterialTheme.colorScheme.primary, M3CookieShape)
+                                            Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
                                         } else Modifier
                                     ),
-                                shape = M3CookieShape,
+                                shape = RoundedCornerShape(12.dp),
                                 color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
                                 contentColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                             ) {
@@ -596,4 +595,9 @@ private fun ActionOptionButton(
         Text(text = label, fontWeight = FontWeight.SemiBold)
     }
 }
+
+
+
+
+
 

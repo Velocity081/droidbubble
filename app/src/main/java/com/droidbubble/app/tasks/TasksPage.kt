@@ -2,9 +2,9 @@ package com.droidbubble.app.tasks
 
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,9 +25,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.droidbubble.app.droidbar.rememberBounceScale
-import com.droidbubble.app.island.M3Cookie6Shape
-import com.droidbubble.app.island.M3CookieShape
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,100 +62,100 @@ fun TasksPage(
             onBack = {
                 editingShortcut = null
                 isCreatingNew = false
-            }
+            },
+            modifier = modifier
         )
-        return
-    }
-
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(
-                title = { Text("Tasks", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                }
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    isCreatingNew = true
-                },
-                shape = M3CookieShape,
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "New Shortcut",
-                    modifier = Modifier.size(26.dp)
-                )
-            }
-        }
-    ) { innerPadding ->
-        if (shortcuts.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.padding(32.dp)
-                ) {
-                    Surface(
-                        modifier = Modifier.size(68.dp),
-                        shape = M3CookieShape,
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.primary
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    } else {
+        Scaffold(
+            modifier = modifier,
+            topBar = {
+                TopAppBar(
+                    title = { Text("Tasks", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
                             Icon(
-                                imageVector = Icons.Default.Bolt,
-                                contentDescription = null,
-                                modifier = Modifier.size(36.dp)
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back"
                             )
                         }
                     }
-                    Text(
-                        text = "No shortcuts yet",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = {
+                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                        isCreatingNew = true
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "New Shortcut",
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(shortcuts, key = { it.id }) { shortcut ->
-                    TaskShortcutCard(
-                        shortcut = shortcut,
-                        onRun = {
-                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                            runCatching {
-                                TaskExecutor.execute(context, shortcut)
-                            }.onFailure { e ->
-                                android.util.Log.e("TasksPage", "Task error", e)
+        ) { innerPadding ->
+            if (shortcuts.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.padding(32.dp)
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(64.dp),
+                            shape = RoundedCornerShape(18.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.primary
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Bolt,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(32.dp)
+                                )
                             }
-                        },
-                        onEdit = { editingShortcut = shortcut },
-                        onDelete = { shortcutToDelete = shortcut }
-                    )
+                        }
+                        Text(
+                            text = "No shortcuts yet",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(shortcuts, key = { it.id }) { shortcut ->
+                        TaskShortcutCard(
+                            shortcut = shortcut,
+                            onRun = {
+                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                runCatching {
+                                    TaskExecutor.execute(context, shortcut)
+                                }.onFailure { e ->
+                                    android.util.Log.e("TasksPage", "Task error", e)
+                                }
+                            },
+                            onEdit = { editingShortcut = shortcut },
+                            onDelete = { shortcutToDelete = shortcut }
+                        )
+                    }
                 }
             }
         }
@@ -195,8 +193,16 @@ private fun TaskShortcutCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val (bounceScale, triggerBounce) = rememberBounceScale()
+    val scale = remember { Animatable(1f) }
+    val coroutineScope = rememberCoroutineScope()
     var showMenu by remember { mutableStateOf(false) }
+
+    fun triggerBounce() {
+        coroutineScope.launch {
+            scale.animateTo(0.96f, tween(60))
+            scale.animateTo(1f, spring(dampingRatio = 0.6f, stiffness = 600f))
+        }
+    }
 
     Surface(
         shape = RoundedCornerShape(20.dp),
@@ -204,8 +210,8 @@ private fun TaskShortcutCard(
         modifier = Modifier
             .fillMaxWidth()
             .graphicsLayer {
-                scaleX = bounceScale
-                scaleY = bounceScale
+                scaleX = scale.value
+                scaleY = scale.value
             }
             .clip(RoundedCornerShape(20.dp))
             .clickable {
@@ -225,7 +231,7 @@ private fun TaskShortcutCard(
             leadingContent = {
                 Surface(
                     modifier = Modifier.size(42.dp),
-                    shape = M3CookieShape,
+                    shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.primary
                 ) {
@@ -282,4 +288,3 @@ private fun TaskShortcutCard(
         )
     }
 }
-
