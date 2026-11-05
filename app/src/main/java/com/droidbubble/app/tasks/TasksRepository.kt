@@ -97,6 +97,29 @@ class TasksRepository(context: Context) {
                         aObj.put("type", "ringer_mode")
                         aObj.put("op", action.type.name)
                     }
+                    is TaskAction.SetBrightness -> {
+                        aObj.put("type", "brightness")
+                        aObj.put("level", action.level)
+                    }
+                    is TaskAction.SetVolume -> {
+                        aObj.put("type", "volume")
+                        aObj.put("level", action.level)
+                    }
+                    is TaskAction.TakeScreenshot -> {
+                        aObj.put("type", "screenshot")
+                    }
+                    is TaskAction.GoHome -> {
+                        aObj.put("type", "go_home")
+                    }
+                    is TaskAction.MediaControls -> {
+                        aObj.put("type", "media_controls")
+                        aObj.put("op", action.type.name)
+                    }
+                    is TaskAction.SendNotification -> {
+                        aObj.put("type", "notification")
+                        aObj.put("title", action.title)
+                        aObj.put("text", action.text)
+                    }
                 }
                 actionsArray.put(aObj)
             }
@@ -135,6 +158,15 @@ class TasksRepository(context: Context) {
                             "airplane_mode" -> TaskAction.AirplaneMode(runCatching { ToggleActionType.valueOf(op) }.getOrDefault(ToggleActionType.TOGGLE))
                             "bluetooth" -> TaskAction.Bluetooth(runCatching { ToggleActionType.valueOf(op) }.getOrDefault(ToggleActionType.TOGGLE))
                             "ringer_mode" -> TaskAction.RingerMode(runCatching { RingerActionType.valueOf(op) }.getOrDefault(RingerActionType.TOGGLE))
+                            "brightness" -> TaskAction.SetBrightness(aObj.optInt("level", 50))
+                            "volume" -> TaskAction.SetVolume(aObj.optInt("level", 50))
+                            "screenshot" -> TaskAction.TakeScreenshot
+                            "go_home" -> TaskAction.GoHome
+                            "media_controls" -> TaskAction.MediaControls(runCatching { MediaActionType.valueOf(op) }.getOrDefault(MediaActionType.TOGGLE_PLAYBACK))
+                            "notification" -> TaskAction.SendNotification(
+                                title = aObj.optString("title", "Task Notification"),
+                                text = aObj.optString("text", "Shortcut executed")
+                            )
                             else -> null
                         }
                         if (action != null) actionsList.add(action)
@@ -159,4 +191,3 @@ class TasksRepository(context: Context) {
         }
     }
 }
-

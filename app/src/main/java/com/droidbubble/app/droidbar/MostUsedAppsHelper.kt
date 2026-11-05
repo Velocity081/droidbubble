@@ -1,4 +1,4 @@
-package com.droidbubble.app.droidbar
+﻿package com.droidbubble.app.droidbar
 
 import android.app.AppOpsManager
 import android.app.usage.UsageStatsManager

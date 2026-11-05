@@ -1,5 +1,8 @@
 package com.droidbubble.app.tasks
 
+import android.accessibilityservice.AccessibilityService
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.bluetooth.BluetoothAdapter
 import android.content.Context
 import android.content.Intent
@@ -9,7 +12,11 @@ import android.media.AudioManager
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.provider.Settings
+import android.view.KeyEvent
+import androidx.core.app.NotificationCompat
+import com.droidbubble.app.R
 import com.droidbubble.app.island.IslandStateManager
+import com.droidbubble.app.service.IslandAccessibilityService
 
 object TaskExecutor {
 
@@ -93,8 +100,8 @@ object TaskExecutor {
             is TaskAction.Flashlight -> {
                 val cm = context.getSystemService(Context.CAMERA_SERVICE) as? CameraManager ?: return
                 runCatching {
-                    val id = cm.cameraIdList.firstOrNull { id ->
-                        cm.getCameraCharacteristics(id).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+                    val id = cm.cameraIdList.firstOrNull { camId ->
+                        cm.getCameraCharacteristics(camId).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
                     } ?: return
                     val currentOn = IslandStateManager.isFlashlightOn.value
                     val targetOn = when (action.type) {
@@ -159,8 +166,6 @@ object TaskExecutor {
                     }
                     am.ringerMode = target
                 }.onFailure {
-                    // On newer Android versions, modifying ringer mode without DND/notification policy access
-                    // throws SecurityException; fallback to sound settings
                     runCatching {
                         val intent = Intent(Settings.ACTION_SOUND_SETTINGS).apply {
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -169,7 +174,112 @@ object TaskExecutor {
                     }
                 }
             }
+            is TaskAction.SetBrightness -> {
+                runCatching {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.System.canWrite(context)) {
+                        val brightness = (action.level * 255 / 100).coerceIn(0, 255)
+                        Settings.System.putInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS_MODE, Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
+                        Settings.System.putInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS, brightness)
+                    } else {
+                        val intent = Intent(Settings.ACTION_DISPLAY_SETTINGS).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    }
+                }
+            }
+            is TaskAction.SetVolume -> {
+                val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+                runCatching {
+                    val maxVol = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                    val target = (action.level * maxVol / 100).coerceIn(0, maxVol)
+                    am.setStreamVolume(AudioManager.STREAM_MUSIC, target, AudioManager.FLAG_SHOW_UI)
+                }
+            }
+            is TaskAction.TakeScreenshot -> {
+                runCatching {
+                    val accessibility = IslandAccessibilityService.instance
+                    if (accessibility != null) {
+                        accessibility.performGlobalAction(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT)
+                    }
+                }
+            }
+            is TaskAction.GoHome -> {
+                runCatching {
+                    val accessibility = IslandAccessibilityService.instance
+                    val handled = accessibility?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME) ?: false
+                    if (!handled) {
+                        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                            addCategory(Intent.CATEGORY_HOME)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(homeIntent)
+                    }
+                }
+            }
+            is TaskAction.MediaControls -> {
+                runCatching {
+                    val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+                    when (action.type) {
+                        MediaActionType.PLAY -> {
+                            if (IslandStateManager.onPlayPause != null) {
+                                IslandStateManager.onPlayPause?.invoke()
+                            } else {
+                                am?.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PLAY))
+                                am?.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PLAY))
+                            }
+                        }
+                        MediaActionType.PAUSE -> {
+                            if (IslandStateManager.onPauseMedia != null) {
+                                IslandStateManager.onPauseMedia?.invoke()
+                            } else {
+                                am?.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PAUSE))
+                                am?.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PAUSE))
+                            }
+                        }
+                        MediaActionType.TOGGLE_PLAYBACK -> {
+                            if (IslandStateManager.onPlayPause != null) {
+                                IslandStateManager.onPlayPause?.invoke()
+                            } else {
+                                am?.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE))
+                                am?.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE))
+                            }
+                        }
+                        MediaActionType.SKIP -> {
+                            if (IslandStateManager.onSkipNext != null) {
+                                IslandStateManager.onSkipNext?.invoke()
+                            } else {
+                                am?.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_NEXT))
+                                am?.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_NEXT))
+                            }
+                        }
+                    }
+                }
+            }
+            is TaskAction.SendNotification -> {
+                runCatching {
+                    val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+                    val channelId = "droidtools_tasks_notifications"
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        val channel = NotificationChannel(
+                            channelId,
+                            "Tasks Notifications",
+                            NotificationManager.IMPORTANCE_HIGH
+                        ).apply {
+                            description = "Notifications triggered by Tasks"
+                        }
+                        nm.createNotificationChannel(channel)
+                    }
+                    val notif = NotificationCompat.Builder(context, channelId)
+                        .setSmallIcon(R.drawable.ic_notification_island)
+                        .setContentTitle(action.title.ifBlank { "Task Notification" })
+                        .setContentText(action.text.ifBlank { "Task executed" })
+                        .setPriority(NotificationCompat.PRIORITY_HIGH)
+                        .setAutoCancel(true)
+                        .build()
+                    nm.notify((System.currentTimeMillis() % 100000).toInt(), notif)
+                }
+            }
         }
     }
 }
-

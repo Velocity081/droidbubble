@@ -1,4 +1,4 @@
-package com.droidbubble.app.ui.main
+﻿package com.droidbubble.app.ui.main
 
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -4148,7 +4148,7 @@ fun DroidbarAppsConfigPage(
                                     },
                                     supportingContent = {
                                         Text(
-                                            text = if (appInfo != null) "Slot ${slotIndex + 1} • Tap to change" else "Slot ${slotIndex + 1} (Empty)",
+                                            text = if (appInfo != null) "Slot ${slotIndex + 1} β€Ά Tap to change" else "Slot ${slotIndex + 1} (Empty)",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
